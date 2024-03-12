@@ -1,0 +1,112 @@
+syntax = "proto3";
+
+package tpeg.mmc;
+import "TPEG/TPEGDataTypes_2_1.proto";
+
+// The MessageManagementContainer component inherits all attributes from the abstract component MMCTemplate. No more attributes are added.
+message MessageManagementContainer {
+	// Unique identifier for a message relating to a particular event transmitted in a particular TPEG service component.
+	uint32 messageID = 1;
+	// Serial number that distinguishes successive versions of one message in case of message updates. The versionID numbers shall be used incrementally, enabling to track the update progress of a message from first transmission, versionID = 0, through updates to cancellation. Wrap around is applied, i.e. the versionID following 255 shall be 0. 
+	// The versionID shall change every time the content of a message changes. Changes of the message management container only shall not cause a change of the versionID. If for example only the message expiry time in the message management container is changed, the versionID remains unchanged. 
+	// To avoid ambiguous situations when a wrap around occurs, the following two rules apply: 
+	// - Not more than one version of a message shall be on air in a service component at the same time within a service with identical service ID.
+	// - The message expiry time has to be set in an appropriate way.
+	// If a message with the same messageID, but a lower version number is received, a wrap around has occurred if the expiry time of the last received message is later.
+	uint32 versionID = 2;
+	// If the current time is later than the messageExpiryTime, the message shall be considered as invalid and the TPEG Client device shall therefore not be present it to the user any more by. When the validity of the message contents for the user is to be maintained, the TPEG Server shall send  the message, or a newer version thereof before the message expires. Expiry times are transmission specific and may differ dependent on the particular transmission conditions.
+	fixed32 messageExpiryTime = 3;
+	// This flag shall be set (true), if a message, identified by its messageID, is no longer valid and has to be removed in the client device. The message body of messages with a set cancelFlag shall be empty.
+	bool cancelFlag = 4;
+	// Date and time when the message was inserted into the delivery channel. Message generation time provides an system diagnostic tool to determine delays in the transmission chain. End-user devices should ignore this value.
+	optional fixed32 messageGenerationTime = 5;
+	// Messages with higher priority should be decoded or processed prior to other messages if resources in the client device are limited. This is a relative indicator only; it is not directly related to the priority of the content. For example a new message might have a higher priority than another one with similar content that has been on air for some time.
+	optional tpeg.datatypes.Typ007_Priority priority = 6;
+}
+// Where parts of messages are updated dynamically, i.e. where parts are replaced or omitted without retransmission of complete messages, one MMCMasterMessage and a number of partial messages have to be transmitted. The TPEG Server has to take care for sending the MMCMasterMessage within a reasonable timeframe, i.e. at least within the message expiry time of the message parts, as no decoding of the message is possible until the MMCMasterMessage has been received. 
+// There shall only be one MMCMasterMessage per messageID in the transmission channel at any time. 
+// The master message connects all MMCMessageParts through the multiPartMessageDirectory listing. 
+// For each entry in the 'multiPartMessageDirectory', one message with a MMCMessagePart container shall be added to the transmission cycle. This MMCMessagePart shall contain the identical messageID like the MMCMasterMessage.
+message MMCMasterMessage {
+	// Unique identifier for a message relating to a particular event transmitted in a particular TPEG service component.
+	uint32 messageID = 1;
+	// Serial number that distinguishes successive versions of one message in case of message updates. The versionID numbers shall be used incrementally, enabling to track the update progress of a message from first transmission, versionID = 0, through updates to cancellation. Wrap around is applied, i.e. the versionID following 255 shall be 0. 
+	// The versionID shall change every time the content of a message changes. Changes of the message management container only shall not cause a change of the versionID. If for example only the message expiry time in the message management container is changed, the versionID remains unchanged. 
+	// To avoid ambiguous situations when a wrap around occurs, the following two rules apply: 
+	// - Not more than one version of a message shall be on air in a service component at the same time within a service with identical service ID.
+	// - The message expiry time has to be set in an appropriate way.
+	// If a message with the same messageID, but a lower version number is received, a wrap around has occurred if the expiry time of the last received message is later.
+	uint32 versionID = 2;
+	// If the current time is later than the messageExpiryTime, the message shall be considered as invalid and the TPEG Client device shall therefore not be present it to the user any more by. When the validity of the message contents for the user is to be maintained, the TPEG Server shall send  the message, or a newer version thereof before the message expires. Expiry times are transmission specific and may differ dependent on the particular transmission conditions.
+	fixed32 messageExpiryTime = 3;
+	// This flag shall be set (true), if a message, identified by its messageID, is no longer valid and has to be removed in the client device. The message body of messages with a set cancelFlag shall be empty.
+	bool cancelFlag = 4;
+	// Date and time when the message was inserted into the delivery channel. Message generation time provides an system diagnostic tool to determine delays in the transmission chain. End-user devices should ignore this value.
+	optional fixed32 messageGenerationTime = 5;
+	// Messages with higher priority should be decoded or processed prior to other messages if resources in the client device are limited. This is a relative indicator only; it is not directly related to the priority of the content. For example a new message might have a higher priority than another one with similar content that has been on air for some time.
+	optional tpeg.datatypes.Typ007_Priority priority = 6;
+	// List of MultiPartMessageDirectory entries, referencing all partial messages to be expected and their type indicating whether they are optional or mandatory. There shall be one entry per partial messages in the multiPartMessageDirectory.
+	MultiPartMessageDirectory multiPartMessageDirectory = 7;
+}
+// A message using the MMCMessagePart component is a partial message, which is transmitted separately from the MMCMasterMessage. This message shall not be interpreted before the master message and all mandatory partial messages defined therein have been received. 
+// The messageID has to be identical to the messageID of the master message. All other attributes are completely independent.
+message MMCMessagePart {
+	// Unique identifier for a message relating to a particular event transmitted in a particular TPEG service component.
+	uint32 messageID = 1;
+	// Serial number that distinguishes successive versions of one message in case of message updates. The versionID numbers shall be used incrementally, enabling to track the update progress of a message from first transmission, versionID = 0, through updates to cancellation. Wrap around is applied, i.e. the versionID following 255 shall be 0. 
+	// The versionID shall change every time the content of a message changes. Changes of the message management container only shall not cause a change of the versionID. If for example only the message expiry time in the message management container is changed, the versionID remains unchanged. 
+	// To avoid ambiguous situations when a wrap around occurs, the following two rules apply: 
+	// - Not more than one version of a message shall be on air in a service component at the same time within a service with identical service ID.
+	// - The message expiry time has to be set in an appropriate way.
+	// If a message with the same messageID, but a lower version number is received, a wrap around has occurred if the expiry time of the last received message is later.
+	uint32 versionID = 2;
+	// If the current time is later than the messageExpiryTime, the message shall be considered as invalid and the TPEG Client device shall therefore not be present it to the user any more by. When the validity of the message contents for the user is to be maintained, the TPEG Server shall send  the message, or a newer version thereof before the message expires. Expiry times are transmission specific and may differ dependent on the particular transmission conditions.
+	fixed32 messageExpiryTime = 3;
+	// This flag shall be set (true), if a message, identified by its messageID, is no longer valid and has to be removed in the client device. The message body of messages with a set cancelFlag shall be empty.
+	bool cancelFlag = 4;
+	// Date and time when the message was inserted into the delivery channel. Message generation time provides an system diagnostic tool to determine delays in the transmission chain. End-user devices should ignore this value.
+	optional fixed32 messageGenerationTime = 5;
+	// Messages with higher priority should be decoded or processed prior to other messages if resources in the client device are limited. This is a relative indicator only; it is not directly related to the priority of the content. For example a new message might have a higher priority than another one with similar content that has been on air for some time.
+	optional tpeg.datatypes.Typ007_Priority priority = 6;
+	// Unique ID of the partial message among all messages with the same messageID.
+	uint32 partID = 7;
+	// Defines how the content of the partial message has to be merged with the overall message content.
+	Mmc002_UpdateMode updateMode = 8;
+	// This attribute may be used, if a partial message is only valid for special versions of the master message. If omitted the partial message shall be applied to any, not expired, version of the master message.
+	uint32 masterMessageVersions = 9;
+}
+// Datastructure containing a partID and a partType attribute. This pair is used to reference a partial message and specify if the referenced message needs to be received before the message may be presented to the user.
+message MultiPartMessageDirectory {
+	// Unique ID of the partial message.
+	uint32 partID = 1;
+	// This attribute partType defines the role of this partial message within the combined message.
+	Mmc001_PartType partType = 2;
+}
+// This table holds the message part type instruction for the client device.
+enum Mmc001_PartType {
+
+	MMC001_PARTTYPE_RFU = 0;
+	// The partial message is essential to present the overall message to the user.
+	MMC001_PARTTYPE_MANDATORY = 1;
+	// The partial message contains additional information. The overall message may be presented to the user, even if this partial message has not been received, or if it has expired.
+	MMC001_PARTTYPE_ADDITIONAL = 2;
+}
+// This table holds the update mode instruction for the client device.
+enum Mmc002_UpdateMode {
+
+	MMC002_UPDATEMODE_RFU = 0;
+	// This feature may be used to replace or add components in the combined message by the components
+	// transmitted by the partial message. The components included by the partial message shall be a sub-tree of
+	// the overall message structure, starting with one of the ADC or LDC components as root component. This
+	// means that the partial message will update the Application Data or Location Referencing Containers and its
+	// related sub-components. Therefore, this feature is an enhancement of the monolithic Message Management
+	// where only an overall message can be replaced/added.
+	MMC002_UPDATEMODE_REPLACETOPLEVEL = 1;
+	// Reserved for the replaceAttributesWhileKeepingStruture
+	// feature, which may be added in a future version:
+	// The structure of the overall message is maintained. All attribute values that are contained in the components of the partial message shall replace the corresponding components attributes in the combined message.
+	MMC002_UPDATEMODE_REPLACEATTRIBUTESWHILEKEEPINGSTRUCTURE = 2;
+	// Reserved for the addInformation feature, which may be added in a future version:
+	// The information is independent of the information contained in the overall message. Decoders shall add the contained information components to the combined message unless the message part with this partID has already been added to the combined message. In this case the already added information is replaced by updated versions.
+	MMC002_UPDATEMODE_ADDINFORMATION = 3;
+}

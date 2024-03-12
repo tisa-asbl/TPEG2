@@ -1,0 +1,325 @@
+syntax = "proto3";
+
+package tpeg.olr;
+
+import "TPEG/TPEGDataTypes_2_1.proto";
+
+message HierarchicalAreaName {
+	// The hierarchical area name.
+	string areaName = 1;
+	// A more detailed area name.
+	repeated string detailAreaName = 2;
+}
+// Data structure AbsoluteGeoCoordinate specifies a geo position with longitude and latitude values with a deca micro degree accuracy stored in 24 bit integer value. The calculation rules to convert geo-coordinates from degree to integer value and back are outlined in section [TODO: add link to calculation rule]. Elevation information can be assigned optionally.
+message AbsoluteGeoCoordinate {
+	// 24-bit representation of a longitude value in decamicrodegree precision.
+	int32 longitude = 1;
+	// 24-bit representation of a latitude value in decamicrodegree precision.
+	int32 latitude = 2;
+	// Elevation of location in metres above/below Mean Sea Level.
+	optional int32 altitude = 3;
+}
+// Data structure RelativeGeoCoordinate stores geo-coordinates as relative values in deca micro degree precision. The calculation rule for relative geo-coordinates are outlined in section [TODO: add link to calculation rule]. Elevation information can be assigned optionally.
+message RelativeGeoCoordinate {
+	// The relative longitude value in decamicrodegree precision.
+	int32 longitude = 1;
+	// The relative latitude value in decamicrodegree precision.
+	int32 latitude = 2;
+	// Elevation of location in metres above/below Mean Sea Level.
+	optional int32 altitude = 3;
+}
+// Data structure Bearing stores the value of a bearing angle in a compressed way. The full circle is divided into 256 sectors which yields a precision of 360/256°.
+message Bearing {
+	// Stores compressed bearing angle value.
+	uint32 value = 1;
+}
+// Data structure DistanceMetresMax15000 stores a distance value in metre precision up to 15000 m.
+message DistanceMetresMax15000 {
+	// Distance in metres, value &lt;=15000.
+	uint32 value = 1;
+}
+// Data structure FirstLocationReferencePoint specifies the first LRP of an ordered sequence of LRPs.
+message FirstLocationReferencePoint {
+	// The coordinate of the first LRP.
+	AbsoluteGeoCoordinate coordinate = 1;
+	// The line properties of the first LRP.
+	LineProperties lineProperties = 100;
+	// The path properties of the first LRP.
+	PathProperties pathProperties = 101;
+}
+// Data structure IntermediateLocationReferencePoint specifies an LRP which is not the first LRP and not the last LRP of an ordered sequence of LRPs.
+message IntermediateLocationReferencePoint {
+	// The coordinates of the intermediate LRP which are relative to the coordinates of the preceding LRP in the sequence of LRPs.
+	RelativeGeoCoordinate coordinate = 1;
+	// The line properties of the intermediate LRP.
+	LineProperties lineProperties = 100;
+	// The path properties of the intermediate LRP.
+	PathProperties pathProperties = 101;
+}
+// Data structure LastLocationReferencePoint specifies the last LRP of an ordered sequence of LRPs.
+message LastLocationReferencePoint {
+	// The coordinates of the last LRP which are relative to the coordinates of the preceding LRP in the sequence of LRPs.
+	RelativeGeoCoordinate coordinate = 1;
+	// The line properties of the last LRP.
+	LineProperties lineProperties = 100;
+}
+// Data structure PointLocationLineReferenceData combines common properties of point location types with network connectivity. It provides information about the location reference path described by the first LRP and the last LRP, the actual point location along that path as defined by the positive offset value and orientation and side of road information of that point location with respect to the referenced path.
+message PointLocationLineReferenceData {
+	// The first LRP.
+	FirstLocationReferencePoint first = 1;
+	// The last LRP.
+	LastLocationReferencePoint last = 2;
+	// The side-of-road information.
+	Olr004_SideOfRoad sideOfRoad = 3;
+	// The orientation information.
+	Olr003_Orientation orientation = 4;
+	// The positive offset relative to the first LRP marking the actual point location on the reference path.
+	optional DistanceMetresMax15000 positiveOffset = 5;
+}
+// Data structure Rectangle specifies a rectangle with a lower left and an upper right coordinate.
+message Rectangle {
+	// The coordinates of the lower left corner of the rectangle.
+	AbsoluteGeoCoordinate lowerLeftCoordinate = 1;
+	// The coordinates of the upper right corner of the rectangle.
+	AbsoluteGeoCoordinate upperRightCoordinate = 2;
+}
+// Component OpenLRLocationReference is the toolkit component. It provides an abstract location reference which could be a linear location, a point location, or an area location.
+// In Annex A, the TPEG binary representation for the OpenLRLocationReference is defined. In Annex B, the TPEG-ML representation for the OpenLRLocationReference is specified.
+// [TODO: add diagram]
+message OpenLRLocationReference {
+	// The version information of OpenLRLocationReference.
+	tpeg.datatypes.MajorMinorVersion version = 1;
+	// Switch between location reference types.
+	AbstractLocationReference locationReference = 100;
+	// The textual description of the location reference.
+	optional LocationDescription locationDescription = 101;
+	// A structured textual description of the location reference.
+	repeated StructuredLocationDescription structuredLocationDescription = 102;
+}
+// The abstract location reference shall function as a switching class between all the defined location reference types.
+message AbstractLocationReference {
+	oneof AbstractLocationReference_opt {
+		RectangleLocationReference rectangleLocationReference = 1;
+		PolygonLocationReference polygonLocationReference = 2;
+		CircleLocationReference circleLocationReference = 3;
+		ClosedLinearLocationReference closedLinearLocationReference = 4;
+		PointAlongLineLocationReference pointAlongLineLocationReference = 5;
+		POIWithAccessPointLocationReference pOIWithAccessPointLocationReference = 6;
+		GridLocationReference gridLocationReference = 7;
+		GeoCoordinateLocationReference geoCoordinateLocationReference = 8;
+		LinearLocationReference linearLocationReference = 9;
+	}
+}
+// Component LinearLocationReference specifies an OpenLR linear location reference.
+message LinearLocationReference {
+	// The first LRP.
+	FirstLocationReferencePoint first = 1;
+	// The last LRP.
+	LastLocationReferencePoint last = 2;
+	// The sequence of intermediate LRP.
+	repeated IntermediateLocationReferencePoint intermediates = 3;
+	// The positive offset in metres.
+	optional DistanceMetresMax15000 positiveOffset = 4;
+	// The negative offset in metres.
+	optional DistanceMetresMax15000 negativeOffset = 5;
+	// The shape describes the location geometry.
+	optional Shape shape = 100;
+}
+// Component GeoCoordinateLocationReference specifies an OpenLR geo-coordinate location reference.
+message GeoCoordinateLocationReference {
+	// The absolute geo-coordinate.
+	AbsoluteGeoCoordinate coordinate = 1;
+}
+// Component PointAlongLineLocationReference specifies an OpenLR point-along-line location reference.
+message PointAlongLineLocationReference {
+	// The network bound point location.
+	PointLocationLineReferenceData pointAlongLine = 1;
+	// The shape describes the location geometry.
+	optional Shape shape = 100;
+}
+// Component POIWithAccessPointLocationReference specifies an OpenLR poi-with-access-point location reference.
+message POIWithAccessPointLocationReference {
+	// The network bound part defining the access point to the POI.
+	PointLocationLineReferenceData lineWithAccessPoint = 1;
+	// The POIi.
+	RelativeGeoCoordinate poi = 2;
+	// The shape describes the location geometry.
+	optional Shape shape = 100;
+	// The shape describes the path between the access point and the point of interest.
+	optional Path pathToPoi = 101;
+}
+// Component CircleLocationReference specifies an OpenLR circular area location reference.
+message CircleLocationReference {
+	// The centre point of the circle.
+	AbsoluteGeoCoordinate centerPoint = 1;
+	// The radius measured in metres.
+	uint32 radius = 2;
+	// The boundary of the area is fuzzy.
+	bool isFuzzyArea = 3;
+}
+// Component PolygonLocationReference specifies an OpenLR polygon area location reference.
+message PolygonLocationReference {
+	// The first coordinate of the polygon area location reference.
+	AbsoluteGeoCoordinate startCoordinate = 1;
+	// The ordered sequence of relative coordinates defining the remaining corner points of the polygon. The first relative coordinate is relative to the absolute coordinate.
+	repeated RelativeGeoCoordinate coordinatePath = 2;
+	// The boundary of the area is fuzzy.
+	bool isFuzzyArea = 3;
+	// A polygon location may contain one or more holes.
+	repeated PolygonLocationReference holes = 100;
+}
+// Structured location descriptions may be used displaying purposes. The text blocks may be compiled to a readable text and may be presented to the user.
+message StructuredLocationDescription {
+	// The code for the language used in this strucutred description.
+	optional tpeg.datatypes.Typ001_LanguageCode languageCode = 1;
+	// Name of the road the location is part of
+	optional string roadName = 2;
+	// The road number the location is part of.
+	optional string roadNumber = 3;
+	// The overall travel direction, e.g. Northbound.
+	optional string travelDirection = 4;
+	// Area indicating the direction to which the road leads to.
+	optional string toArea = 5;
+	// Area where the start of the path is in.
+	optional string fromArea = 6;
+	// Concrete start of the path on that road.
+	optional string start = 7;
+	// Concrete end of the path on that road.
+	optional string end = 8;
+	// Describes the hierarchical (administrative) area.
+	optional HierarchicalAreaName area = 9;
+	// Concrete describtion of the location (e.g. crossing or POI).
+	optional string at = 10;
+}
+// Component RectangleLocationReference specifies an OpenLR rectangle area location reference.
+message RectangleLocationReference {
+	// The actual rectangle.
+	Rectangle rectangle = 1;
+	// The boundary of the area is fuzzy.
+	bool isFuzzyArea = 2;
+}
+// Component GridLocationReference specifies an OpenLR grid area location reference.
+message GridLocationReference {
+	// The base element of the grid.
+	Rectangle baseElement = 1;
+	// Column count of the grid, with nrColumns &gt; 1.
+	uint32 nrColumns = 2;
+	// Row count of the grid, with nrRows &gt; 1.
+	uint32 nrRows = 3;
+	// The boundary of the area is fuzzy.
+	bool isFuzzyArea = 4;
+}
+// Component ClosedLinearLocationReference specifies an OpenLR closed linear area location reference.
+message ClosedLinearLocationReference {
+	// The first LRP of the closed linear location.
+	FirstLocationReferencePoint first = 1;
+	// The ordered sequence of intermediate LRP.
+	repeated IntermediateLocationReferencePoint intermediates = 2;
+	// The line properties are combined with the coordinates of the first LRP and form the last LRP of the closed linear location.
+	LineProperties last = 100;
+	// The shape describes the location geometry.
+	optional Shape shape = 101;
+}
+// Component LineProperties specifies the line properties of an LRP.
+message LineProperties {
+	// The functional road class value.
+	Olr001_FunctionalRoadClass frc = 1;
+	// The form of way value.
+	Olr002_FormOfWay fow = 2;
+	// The bearing value.
+	Bearing bearing = 3;
+	// Bearing of road on the left hand side of the referenced line.
+	optional Bearing srBearingLeft = 4;
+	// Bearing of road on the right hand side of the referenced line.
+	optional Bearing srBearingRight = 5;
+}
+// Component PathProperties specifies the path properties of an LRP, that is, the set of attributes defining the location reference path between two subsequent LRPs.
+message PathProperties {
+	// The lowest functional road class to the next LRP along the location reference path.
+	Olr001_FunctionalRoadClass lfrcnp = 1;
+	// The distance to the next LRP, i.e., the length of the location reference path.
+	DistanceMetresMax15000 dnp = 2;
+	// True indicates that the direction of traffic is against driving direction for all lines in the path.
+	bool againstDrivingDirection = 3;
+}
+// Component LocationDescription provides localised textual descriptions of the location.
+message LocationDescription {
+	// The list of localised location descriptions.
+	repeated tpeg.datatypes.LocalisedLongString description = 1;
+}
+// Component Shape specifies a sequence of coordinates defining a shape.
+message Shape {
+	// Sequence of absolute coordinates.
+	repeated AbsoluteGeoCoordinate points = 1;
+}
+// Component Path specifies a sequence of coordinates defining a path.
+message Path {
+	// Sequence of absolute coordinates.
+	repeated AbsoluteGeoCoordinate points = 1;
+}
+// The functional road class (FRC) describes the importance of a road within a road network.
+enum Olr001_FunctionalRoadClass {
+	// The first (most important) functional road class.
+	OLR001_FUNCTIONALROADCLASS_FRC0 = 0;
+	// The second functional road class.
+	OLR001_FUNCTIONALROADCLASS_FRC1 = 1;
+	// The third functional road class.
+	OLR001_FUNCTIONALROADCLASS_FRC2 = 2;
+	// The fourth functional road class.
+	OLR001_FUNCTIONALROADCLASS_FRC3 = 3;
+	// The fifth functional road class.
+	OLR001_FUNCTIONALROADCLASS_FRC4 = 4;
+	// The sixth functional road class.
+	OLR001_FUNCTIONALROADCLASS_FRC5 = 5;
+	// The seventh functional road class.
+	OLR001_FUNCTIONALROADCLASS_FRC6 = 6;
+	// The eighth functional road class.
+	OLR001_FUNCTIONALROADCLASS_FRC7 = 7;
+}
+// The form of way (FOW) describes the physical type of a road.
+enum Olr002_FormOfWay {
+
+	OLR002_FORMOFWAY_UNDEFINED = 0;
+
+	OLR002_FORMOFWAY_MOTORWAY = 1;
+
+	OLR002_FORMOFWAY_MULTIPLE_CARRIAGEWAY = 2;
+
+	OLR002_FORMOFWAY_SINGLE_CARRIAGEWAY = 3;
+
+	OLR002_FORMOFWAY_ROUNDABOUT = 4;
+
+	OLR002_FORMOFWAY_TRAFFIC_SQUARE = 5;
+
+	OLR002_FORMOFWAY_SLIPROAD = 6;
+
+	OLR002_FORMOFWAY_OTHER = 7;
+
+	OLR002_FORMOFWAY_BIKE_PATH = 8;
+
+	OLR002_FORMOFWAY_FOOTPATH = 9;
+
+	OLR002_FORMOFWAY_PEDESTRIAN_ZONE = 10;
+}
+// The orientation information (ORI) describes the relationship between the point of interest and the direction of a referenced line. The point may be directed in the same direction as the line, against that direction, both directions, or the direction of the point might be unknown.
+enum Olr003_Orientation {
+
+	OLR003_ORIENTATION_NO_ORIENTATION_OR_UNKNOWN = 0;
+
+	OLR003_ORIENTATION_WITH_LINE_DIRECTION = 1;
+
+	OLR003_ORIENTATION_AGAINST_LINE_DIRECTION = 2;
+
+	OLR003_ORIENTATION_BOTH_DIRECTIONS = 3;
+}
+// The side of road information describes the relationship between the point of interest and a referenced line. The point can be on the right side of the line, on the left side of the line, on both sides of the line, or directly on the line.
+enum Olr004_SideOfRoad {
+
+	OLR004_SIDEOFROAD_ON_ROAD_OR_UNKNOWN = 0;
+
+	OLR004_SIDEOFROAD_RIGHT_SIDE_OF_THE_ROAD = 1;
+
+	OLR004_SIDEOFROAD_LEFT_SIDE_OF_THE_ROAD = 2;
+
+	OLR004_SIDEOFROAD_BOTH_SIDES_OF_THE_ROAD = 3;
+}

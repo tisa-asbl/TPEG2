@@ -1,0 +1,791 @@
+syntax = "proto3";
+
+package tpeg.fpi;
+import "TPEG/LRC_3_0.proto";
+import "TPEG/MMC_1_1.proto";
+
+import "TPEG/TPEGDataTypes_2_1.proto";
+// The overall FPI message container.
+message FPIMessage {
+	// This component is specified in the MMC specification. It contains all and only information related to message management.
+	// The sender side, especially the instance generating the transmission data has to ensure that the message management information allows unambiguous interpretation over time and in appropriate scenarios with disturbed reception specific to the transmission channel.
+	MessageManagement mmt = 100;
+	// Application information for a cluster of Fuel Stations. This can contain either fueling definitions, basic information, or additional availability and restrictions, or precise site and facility, or location information.
+	repeated FPIapplicationContainerTemplate applicationInformation = 101;
+	// Geographic coverage of the stations for which information is included in this message.
+	// FPI shall only use area locations to indicate the geographicCoverage of the FPI message: no point locations, nor linear locations may be used.
+	optional tpeg.lrc.LocationReferencingContainer geographicCoverage = 102;
+}
+// Abstract component for all application cluster components.
+message FPIapplicationContainerTemplate {
+	// The areaID_Key provides a level of granularity for fuelingdefinitions and fuel station identifiers. 
+	// Per area, locally unique stationID_Keys can be chosen, as only the combination (AreaID_Key, StationID_Key) is to be unique in the context of an ACID (application and content identification).
+	// Similarly, the fuelingdefinitionsID_Key is only unique by the combination (areaID_Key, fuelingDefinitionsID_Key).
+	uint32 areaID_Key = 1;
+	oneof FPIapplicationContainerTemplate_opt {
+		StationPOILocationCluster stationPOILocationCluster = 2;
+		StationExtraInfoCluster stationExtraInfoCluster = 3;
+		StationSiteInfoCluster stationSiteInfoCluster = 4;
+		StationFuelingInfoCluster stationFuelingInfoCluster = 5;
+		FuelingDefinitions fuelingDefinitions = 6;
+		StationNavLocationAlongRoadCluster stationNavLocationAlongRoadCluster = 7;
+		StationMapLocationCluster stationMapLocationCluster = 8;
+	}
+}
+// Component to transmit fuel type, name, price and delivery unit definitions. This component can be sent in a separate message with a larger expiry time, instead of repeated for every fuel station. The fuelingDefinitionsID_Key tag defines the proper definitions to use.
+// In the context of a given service ACID, the combination of areaID_Key and fuelDefinitonsID_Key shall define a unqiue set of fuel definitions.
+// A single FuelingDefinitions table shall be contained in a single FuelingDefinitions component, transmitted in a single FPI message.
+message FuelingDefinitions {
+	// ID of set of fueling definitions given here. This ID will be referenced to by FuelingInformation.
+	// The combination (AreaID_Key, fuelingDefinitionsID_Key) shall be unique per ACID (Application and Content Identifier) for a given TPEG service.
+	uint32 fuelingDefinitionsID_Key = 1;
+	// Currency of pricing for all offered fuel types.
+	tpeg.datatypes.Typ003_CurrencyType fuelPriceCurrency = 2;
+	// List of Fuel Types, delivery units and pricing resolution information as part of this fuelingDefinitions.
+	repeated FuelTypeInformation fuelType = 3;
+}
+// The MessageManagement component is a abstract generalization for the message management containers as specified in the MMC specification.
+message MessageManagement {
+	oneof MessageManagement_opt {
+		tpeg.mmc.MessageManagementContainer messageManagementContainer = 1;
+		tpeg.mmc.MMCMessagePart mMCMessagePart = 2;
+		tpeg.mmc.MMCMasterMessage mMCMasterMessage = 3;
+	}
+}
+// Additional information for a cluster of fuel stations.
+message StationExtraInfoCluster {
+	// Reference to FuelingDefinitions table to use (in context of provided AreaID_Key).A reference to a fuel type in the fuelingDefintions table is used in context of delivery restrictions and temporary unavailability.
+	uint32 fuelingDefinitionsID_Key = 1;
+	// Component containing extra information for a particular fuel station
+	repeated StationExtraInformation stationExtraInformation = 100;
+}
+// Addtional information for a fuel station, which may be relevant only for a few stations (e.g. in case of promotional offers or delivery restrictions).
+message StationExtraInformation {
+	// The stationID_Key, together with areaID_Key, uniquely identifies a particular station in the context of a service ACID (Application and Content IDentifier).
+	uint32 stationID_Key = 1;
+	// Reference to fuel type which is temporarily out of stock. This reference provides the fuelTypeID_Key of the fuel type in the fuel type table in fuelDefinitions Component with (AreaID_Key, fuelingDefinitionsID_Key) as given in the StationExtraInfoCluster component.
+	repeated uint32 fuelTemporarilyUnavailableID_Key = 2;
+	// Optional indication whether delivery restrictions are placed on a particular fuel type.
+	repeated FuelDeliveryRestrictionType fuelDeliveryRestriction = 3;
+	// Field to transmit any station promotional offers in languages of interest.
+	repeated tpeg.datatypes.LocalisedShortString stationPromotionalOffer = 4;
+	// Field to transmit any station additional information (other than promotional offers) in languages of interest.
+	repeated tpeg.datatypes.LocalisedShortString freetext = 5;
+}
+// This component contains the primary information for a fuel station: Fuel types, Fuel Brand name(s), and primary station information. On basis of the FuelingDefinitions, this fuel information, and basic location information, a receiver can already present useful information to an end user.
+message StationFuelingInfoCluster {
+	// Reference to correct FuelingDefinitions to use (in context of AreaID_Key unique).
+	uint32 fuelingDefinitionsID_Key = 1;
+	// Reference date for pricing information in stationFuelingInformation datastructures.
+	fixed32 pricingReferenceDate = 2;
+	// Fueling information for a particular fuel station.
+	repeated StationFuelingInformation stationFuelInfo = 3;
+	// Name of a local Fuel Brand, not occurring in table fpi008: FuelBrand nor in table fpi009: AltfFuelBrand.
+	repeated string localFuelBrandName = 4;
+}
+// Precise, map related location referencing information for a cluster of stations, located at different roads.
+message StationMapLocationCluster {
+	// Container component holding precise location information for a list of stations.
+	repeated StationMapLocationInfo stationLocationInfo = 1;
+}
+// Entry/exit road location referencing information for a cluster of stations, located along the same main road. 
+// This information is especially suited for navigating towards/from fuel stations.
+message StationNavLocationAlongRoadCluster {
+	// Resolution of the spatial offset used in this structure in steps of 5/10/25/50/100 metres. This spatial resolution value shall be used for all spatial offsets in the StationLocationVector.
+	Fpi007_SpatialResolution spatialResolution = 1;
+	// Navigable entry/exit locations of a fuel station along a main road, as specified relative to a section of that road.
+	repeated StationLocationVectorInfo stationNavLocation = 2;
+	// The main road along which a number of fuel stations are situated. The locations of individual fuel stations are given as offsets with respect to the start of this RoadLocation.
+	tpeg.lrc.LocationReferencingContainer roadLocation = 100;
+}
+// Basic POI location referencing information for a cluster of fuel stations.
+message StationPOILocationCluster {
+	// A list of station id's with basic location information.
+	repeated StationPOILocationInfo stationBasicLocInfo = 1;
+}
+// Detailed site information for a fuel station, including full address, opening hours, and accepted payment methods.
+message StationSiteInfo {
+	// The stationID_Key, together with areaID_Key, uniquely identifies a particular station in the context of a service ACID (Application and Content IDentifier).
+	uint32 stationID_Key = 1;
+	// Name of individual station. Applicable if well known, or when no brand name is associated with the station.
+	optional string stationName = 2;
+	// Street address of the fuel station in the relevant local language(s).
+	repeated tpeg.datatypes.LocalisedShortString stationAddress = 3;
+	// Contact information for the fuel station.
+	optional StationContactInformation stationContactInfo = 4;
+	// Opening hours of the facility.
+	optional tpeg.datatypes.TimeToolkit openingHours = 5;
+	// Hours when a human attendant is available for cash payments and help for motorists.
+	optional tpeg.datatypes.TimeToolkit attendantHours = 6;
+	// The station's fuel pumping policy: self-serve, full-serve or a combination.
+	optional Fpi005_FuelServicePolicyType servicePolicy = 7;
+	// Accepted currencies for payment, if not only the displayed currency for the fuel price.
+	repeated tpeg.datatypes.Typ003_CurrencyType acceptedCurrencies = 8;
+	// Accepted methods for payment.
+	repeated Fpi004_PaymentMethodType acceptedPaymentMethods = 9;
+	// When payment methods such as debit or credit cards are indicated, then here the names of accepted payment cards (debit or credit cards) can be specified . 
+	// E.g. "American Express" "Visa" "Maestro" "DKV" etc.
+	repeated string acceptedPaymentCards = 10;
+	// Lists available services which the stations offers next to the fueling service (e.g. mini market).
+	repeated Fpi006_AssociatedServiceType associatedServices = 11;
+	// Reference to a POI of a third party POI supplier.
+	repeated POILinkType POILink = 12;
+	// Potential size restrictions on vehicles that are allowed to use this facility.
+	optional SizeRestrictions sizeRestrictions = 13;
+}
+// Site information for a cluster of fuel stations.
+message StationSiteInfoCluster {
+	// Detailed site information for a particular fuel station.
+	repeated StationSiteInfo stationSiteDescription = 100;
+}
+// Data structure to specify applicable minimum and/or maximum delivery amounts for a specific fuel type.
+message FuelDeliveryRestrictionType {
+	// Reference to a fuel type as specified in the appropriate FuelingDefinitions component (with given AreaID_Key, fuelingDefinitionsID_Key).
+	uint32 fuelTypeID_Key = 1;
+	// Minimum delivery amount of Fuel Type in number of delivery units.
+	optional uint32 minimumDeliveryAmount = 2;
+	// Maximum delivery amount of Fuel Type in number of delivery units.
+	optional uint32 maximumDeliveryAmount = 3;
+}
+// Specification of the name and type of the fuel, including pricing resolution and delivery units.
+message FuelTypeInformation {
+	// ID of fuel type defined in this datastructure with the remainder of the attributes in the FuelTypeInformation datastructure. The combination (AreaID_Key, fuelingDefinitionsID_Key, fuelTypeID_Key) shall be unique.
+	uint32 fuelTypeID_Key = 1;
+	// The type of fuel, e.g. unleaded petrol, or LPG.
+	Fpi003_FuelKindType fuelKind = 2;
+	// The delivery unit of the fuel, also the unit for which unit prices are given.
+	Fpi001_DeliveryUnitType deliveryUnit = 3;
+	// The display resolution of the unit price. Fuel Price is transmitted as unitFuelPricePoints * (10^unitFuelPriceResolution). 
+	// Thus a price of 1.34 $ / Gallon is transmitted as follows:
+	// unitFuelPricePoints = 134
+	// unitFuelPriceResolution = -2
+	// deliveryUnit = 2
+	int32 unitFuelPriceResolution = 4;
+	// Local name of the fuel, e.g. "Premium", or "Euro-95". Name can be language-dependent, e.g. "Bleifrei 95" or "Sans Plomb 95"
+	repeated tpeg.datatypes.LocalisedShortString fuelName = 5;
+}
+// Pricing information for a specific type of fuel, in both pricing resolution, currency, and delivery units as specified in the applicable FuelTypeInformation data structure.
+message FuelTypePrice {
+	// ID of the fueltype, as contained in the fuelTypeInformation table in FuelingDefinitions component. For this fuelType here the price is given.
+	uint32 fuelTypeID_Key = 1;
+	// Unit price of fuel type per delivery unit. Specified in points. Actual price is obtained by combining this with the unitFuelPriceResolution specified in the FuelType inside the FPIFuelingDefinitions component. 
+	// Price = unitFuelPricePoints * (10^unitFuelPriceResolution).
+	uint32 unitFuelPricePoints = 2;
+}
+// General contact information (phone, fax, email, website) for the fuel station.
+message StationContactInformation {
+	// Telephone number of fuel station, both numeric or alpha-numeric (e.g. 01-800-FUEL)
+	optional string stationPhoneNumber = 1;
+	// Fax  number of fuel station, both numeric or alpha-numeric (e.g. 01-800-FUEL)
+	optional string stationFaxNumber = 2;
+	// email address of fuel station, e.g. info@fuelstation.com
+	optional string stationEmailAddress = 3;
+	// URL address of fuel station, e.g. www.fuelstation.com
+	optional string stationWebSite = 4;
+}
+// Cross reference to a POI vendor specific POI identifier. This is a cross-reference to IDs outside the TPEG realm, e.g. a reference to a Navteq/TeleAtlas  POI ID as contained in a Navteq/TeleAtlas map database.
+message POILinkType {
+	// The POI vendor for which the vendor specific POI identifier is given.
+	string poiVendorName = 1;
+	// Vendor specific POI ID as sequence of alphanumeric characters.
+	string poiVendorSpecificID = 2;
+}
+// Applicable size restrictions on vehicles allowed to enter the facility premises.
+message SizeRestrictions {
+	// Maximum lenght of vehicle to be allowed to enter the facility.
+	optional uint32 maxLength = 1;
+	// Maximum width of vehicle to be allowed to enter the facility.
+	optional uint32 maxWidth = 2;
+	// Maximum height of vehicle to be allowed to enter the facility.
+	optional uint32 maxHeight = 3;
+	// Maximum weight of vehicle to be allowed to enter the facility.
+	optional uint32 maxWeight = 4;
+}
+// Specification of the fuelbrand which a fuel station may carry, and the subjective price rating for this station.
+// If the intended fuelbrand is a global brand, occurring in either table fpi008: FuelBrand or table fpi009: AltFuelBrand, then a single index is given to the FuelBrand as appearing in either table.
+// If the intended fuelbrand is a (local or new) brand, not occurring in above tables, then optionally the globalFuelBrand could set to fpi008 value "001: local brand", and the optional attribute localFuelBrandReference is set to the index of (dynamic) table localFuelBrand in component StationFuelingInfoCluster, where this local name is specified.
+message StationBrandAndRating {
+	// Reference to a global fuel brand in the table fpi008: FuelBrand.
+	optional Fpi008_FuelBrand globalFuelBrand = 1;
+	// Reference to a global fuel brand in the table fpi009: AltFuelBrand.
+	optional Fpi009_AltFuelBrand altGlobalFuelBrand = 2;
+	// Optional reference to a local fuel brand name. This reference is an index into the localFuelBrandName list (index=0, ...) in component StationFuelInfoCluster
+	optional uint32 localFuelBrandReference = 3;
+	// Subjective Price Rating of Station.  
+	// Content providers can indicate with the subjective price rating whether on average this station is relatively expensive (lower value) or relatively inexpensive (higher value).
+	// A higher value indicates that this station offers less expensive prices compared to other fuel stations in the region. A value of 0 indicates that this is one of the most expensive fuel stations in the region.
+	// A subjective price rating can be indicated as a number of stars, where more stars indicate more competitive pricing. 
+	// Recommend is to limit the maximum value for least expensive station to value 10 or less.
+	optional uint32 subjectivePriceRating = 4;
+}
+// Information for a fuel station specifying the fuel types, pricing as well as fuel brand, and the subjective price rating of this station.
+message StationFuelingInformation {
+	// The stationID_Key, together with areaID_Key, uniquely identifies a particular station in the context of a service ACID (Application and Content IDentifier).
+	uint32 stationID_Key = 1;
+	// The rating and branding information for the fuel station
+	// - The fuel brand which this station carries
+	// - The subjective price rating for this station
+	StationBrandAndRating stationBrandAndRating = 2;
+	// Date of pricing information. This is specified as the number of days prior to referencePricingDate as given in the StationFuelingInformation component.
+	// 0 = Same date as referencePricingDate
+	// 1 = Day before Date of referencePricingDate
+	// 2 = Two days before Date of referencePricingDate
+	// ...
+	uint32 dateOfStationPricingInformation = 3;
+	// List of fuel prices per fuel type.
+	repeated FuelTypePrice fuelPrice = 4;
+}
+// Precise, map-related location reference information for the location of the facility itself, and optionally entrance and exit roads to this facility.
+message StationMapLocationInfo {
+	// The stationID_Key, together with areaID_Key, uniquely identifies a particular station in the context of a service ACID (Application and Content IDentifier).
+	uint32 stationID_Key = 1;
+	// Accurate location reference of facility location itself.
+	tpeg.lrc.LocationReferencingContainer preciseStationLocation = 100;
+	// Accurate location reference to one or more entrance roads to the facility.
+	repeated tpeg.lrc.LocationReferencingContainer stationEntryLocation = 101;
+	// Accurate location reference to one or more exit roads from the facility location
+	repeated tpeg.lrc.LocationReferencingContainer stationExitLocation = 102;
+}
+// Location for an individual station along the given RoadLocation, specified as offset from the start of this RoadLocation.
+message StationLocationVectorInfo {
+	// The stationID_Key, together with areaID_Key, uniquely identifies a particular station in the context of a service ACID (Application and Content IDentifier).
+	uint32 stationID_Key = 1;
+	// Offset on an entrance road/ramp to the fuel station from the RoadLocation.
+	// Offset is specified relative to the start of the RoadLocation in units given by the spatialResolution in the cluster component.
+	repeated uint32 entryLocationOffset = 2;
+	// Offset on an exit road/ramp from of the fuel station to the RoadLocation.
+	// Offset is specified relative to the start of the RoadLocation in units given by the spatialResolution in the cluster component.
+	repeated uint32 exitLocationOffset = 3;
+	// Offset to an combined entry/exit road/ramp from of the fuel station to the RoadLocation.
+	// Offset is specified relative to the start of the RoadLocation in units given by the spatialResolution in the cluster component.
+	repeated uint32 entryExitLocationOffset = 4;
+}
+// Data structure to provide a minimal POI-style location reference (WGS84 co-ordinate) for a fuel station.
+message StationPOILocationInfo {
+	// The stationID_Key, together with areaID_Key, uniquely identifies a particular station in the context of a service ACID (Application and Content IDentifier).
+	uint32 stationID_Key = 1;
+	// (center) WGS84 co-ordinate of the POI
+	WGS84coordinate coordinate = 2;
+	// Elevation of location in meters above/below Mean Sea Level (MSL).
+	optional int32 altitudeMSL = 3;
+	// Name of the fuel station itself.
+	optional string stationName = 4;
+	// Name of the road adjacent to the location of the fuel station.
+	optional string adjacentRoadName = 5;
+	// The approximate direction of travel for the road side at which the primary entry location for the fuel station is located. 
+	// Expressed as 360/256 degrees.
+	optional uint32 adjacentRoadSideTravelDirection = 6;
+}
+// Data structure to specify a WGS-84 co-ordinate in medium resolution (single-digit meter accuracy).
+message WGS84coordinate {
+	// Longitude in standard 24 bit accuracy stores co-ordinates in order of magnitude of 10 micro degrees resolution (five decimals).
+	// Longitude (unit degrees) is encoded as follows:
+	// WGS84longitude = int ( sign(longitude)*0.5 + (longitude * (2^24)/360))
+	int32 wgs84Longitude = 1;
+	// WGS84 latitude in standard 24 bit accuracy stores co-ordinates in order of magnitude of 10 micro degrees resolution (five decimals).
+	// Latitude (unit degrees) is encoded as follows:
+	// WGS84latitude = int ( sign(latitude)*0.5 + (latitude * (2^24)/360))
+	int32 wgs84Latitude = 2;
+}
+// This table enumerates the applicable types of delivery units for various fuel types.
+enum Fpi001_DeliveryUnitType {
+
+	FPI001_DELIVERYUNITTYPE_UNKNOWN = 0;
+	// Unit: Liter
+	FPI001_DELIVERYUNITTYPE_LITER = 1;
+	// Unit: Imperial Gallon
+	FPI001_DELIVERYUNITTYPE_IMPERIAL_GALLON = 2;
+	// Unit: US Gallon
+	FPI001_DELIVERYUNITTYPE_US_GALLON = 3;
+	// Cubic meters: unit m3
+	FPI001_DELIVERYUNITTYPE_M3 = 4;
+	// KilowattHour. Unit KWh.
+	FPI001_DELIVERYUNITTYPE_KWH = 5;
+	// Kilogram. Unit Kg
+	FPI001_DELIVERYUNITTYPE_KG = 6;
+	// Gas gallon equivalent: unit for CNG (Compressed Natural Gas) used in the USA.
+	FPI001_DELIVERYUNITTYPE_GGE = 7;
+
+	FPI001_DELIVERYUNITTYPE_UNDEFINED = 255;
+}
+// This table enumerates a list of fuel types, for machine understandable selection of fuel types. Due to differences in method for determining Octane level in North America and rest of the world, octane grades are specified with relative levels. Definition indicates with (R+M)/2 or RON Octane number belongs to which grades.
+enum Fpi003_FuelKindType {
+
+	FPI003_FUELKINDTYPE_UNKNOWN = 0;
+	// Unleaded petrol with 87 Octane (R+M)/2 in North America and 95 Octane in Rest of World.
+	FPI003_FUELKINDTYPE_UNLEADED_PETROL = 1;
+	// Unleaded petrol with 89 Octane (R+M)/2 in North America and 98 Octane in Rest of World.
+	FPI003_FUELKINDTYPE_MIDGRADE_OCTANE_UNLEADED_PETROL = 2;
+	// Unleaded petrol with over 89 Octane (R+M)/2 in North America and over 98 Octane in Rest of World.
+	FPI003_FUELKINDTYPE_HIGH_OCTANE_UNLEADED_PETROL = 3;
+	// Leaded petrol with at least 87 Octane (R+M)/2 in North America and at least 95 Octane in Rest of World.
+	FPI003_FUELKINDTYPE_LEADED_PETROL = 5;
+	// Leaded petrol with over 89 Octane (R+M)/2 in North America and over 98 Octane in Rest of World.
+	FPI003_FUELKINDTYPE_HIGH_OCTANE_LEADED_PETROL = 6;
+
+	FPI003_FUELKINDTYPE_PETROL_WITH_LEAD_SUBSTITUTE = 7;
+	// Unleaded petrol with ethanol supplement.
+	FPI003_FUELKINDTYPE_BIOPETROL = 8;
+
+	FPI003_FUELKINDTYPE_DIESEL = 9;
+
+	FPI003_FUELKINDTYPE_BIODIESEL = 10;
+	// Liquefied Petroleum Gas.
+	FPI003_FUELKINDTYPE_LPG = 11;
+	// Compressed Natural Gas
+	FPI003_FUELKINDTYPE_CNG = 12;
+
+	FPI003_FUELKINDTYPE_ETHANOL = 13;
+
+	FPI003_FUELKINDTYPE_HYDROGEN = 14;
+
+	FPI003_FUELKINDTYPE_ELECTRIC = 15;
+
+	FPI003_FUELKINDTYPE_UNDEFINED = 255;
+}
+// This table enumerates the applicable methods of payment accepted at this facility.
+enum Fpi004_PaymentMethodType {
+
+	FPI004_PAYMENTMETHODTYPE_UNKNOWN = 0;
+
+	FPI004_PAYMENTMETHODTYPE_CASH = 1;
+
+	FPI004_PAYMENTMETHODTYPE_CREDIT_CARD = 2;
+
+	FPI004_PAYMENTMETHODTYPE_BANK_CARD = 3;
+
+	FPI004_PAYMENTMETHODTYPE_TANK_CARD = 4;
+
+	FPI004_PAYMENTMETHODTYPE_ATM = 6;
+
+	FPI004_PAYMENTMETHODTYPE_RFID = 7;
+
+	FPI004_PAYMENTMETHODTYPE_PRE_PAY_CARD = 8;
+
+	FPI004_PAYMENTMETHODTYPE_MOBILE_PHONE = 9;
+
+	FPI004_PAYMENTMETHODTYPE_SMARTCARD = 10;
+	// In UK also known as "agency card", in North America as "reward card" or "club card".
+	FPI004_PAYMENTMETHODTYPE_CUSTOMER_LOYALTY_CARD = 11;
+
+	FPI004_PAYMENTMETHODTYPE_UNDEFINED = 255;
+}
+// This table enumerates the applicable types of fueling service policy offered by the station.
+enum Fpi005_FuelServicePolicyType {
+
+	FPI005_FUELSERVICEPOLICYTYPE_UNKNOWN = 0;
+
+	FPI005_FUELSERVICEPOLICYTYPE_SELF_SERVICE_ONLY = 1;
+
+	FPI005_FUELSERVICEPOLICYTYPE_FULL_SERVICE_ONLY = 2;
+
+	FPI005_FUELSERVICEPOLICYTYPE_SELF_SERVICE_AND_FULL_SERVICE = 3;
+	// Completely automated (self-service) fuel station, never attended by a human operator
+	FPI005_FUELSERVICEPOLICYTYPE_UNATTENDED_SERVICE_STATION = 4;
+
+	FPI005_FUELSERVICEPOLICYTYPE_UNDEFINED = 255;
+}
+// This table enumerates a list of applicable associated services as commonly offered by a fuel station.
+enum Fpi006_AssociatedServiceType {
+
+	FPI006_ASSOCIATEDSERVICETYPE_UNKNOWN = 0;
+
+	FPI006_ASSOCIATEDSERVICETYPE_PUBLIC_RESTROOMS = 1;
+
+	FPI006_ASSOCIATEDSERVICETYPE_MINI_MARKET = 2;
+
+	FPI006_ASSOCIATEDSERVICETYPE_CARWASH = 3;
+
+	FPI006_ASSOCIATEDSERVICETYPE_RESTAURANT = 4;
+
+	FPI006_ASSOCIATEDSERVICETYPE_HOTEL = 5;
+
+	FPI006_ASSOCIATEDSERVICETYPE_VEHICLE_REPAIR_SHOP = 6;
+
+	FPI006_ASSOCIATEDSERVICETYPE_INTERNET_HOTSPOT = 7;
+
+	FPI006_ASSOCIATEDSERVICETYPE_UNDEFINED = 255;
+}
+// This table enumerates the applicable resolutions in meter for the specified spatial offset from the start of the RoadLocation.
+enum Fpi007_SpatialResolution {
+	// Resolution of related offset is in 5-Meter steps as absolute offsets to the spatial reference point, offset = value*5 [m]
+	FPI007_SPATIALRESOLUTION_5_METER_RESOLUTION = 0;
+	// Resolution of related offset is in 10-Meter steps as absolute offsets to the spatial reference point, offset = value*10 [m]
+	FPI007_SPATIALRESOLUTION_10_METER_RESOLUTION = 1;
+	// Resolution of related offset is in 25-Meter steps as absolute offsets to the spatial reference point, offset = value*25 [m]
+	FPI007_SPATIALRESOLUTION_25_METER_RESOLUTION = 2;
+	// Resolution of related offset is in 50-Meter steps as absolute offsets to the spatial reference point, offset = value*50 [m]
+	FPI007_SPATIALRESOLUTION_50_METER_RESOLUTION = 3;
+	// Resolution of related offset is in 100-Meter steps as absolute offsets to the spatial reference point, offset = value*100 [m]
+	FPI007_SPATIALRESOLUTION_100_METER_RESOLUTION = 4;
+}
+// This table enumerates a list of well-known fuel Brands. For these brands logos could be provided to client devices.
+enum Fpi008_FuelBrand {
+	// Name not known
+	FPI008_FUELBRAND_UNKNOWN = 0;
+	// Local fuel brand, name to be specified separately
+	FPI008_FUELBRAND_LOCAL_BRAND = 1;
+	// USA
+	FPI008_FUELBRAND_76 = 2;
+	// USA
+	FPI008_FUELBRAND_7_ELEVEN = 3;
+	// Italy
+	FPI008_FUELBRAND_AGIP = 4;
+	// Switzerland
+	FPI008_FUELBRAND_AGROLA = 5;
+	// France
+	FPI008_FUELBRAND_ALDI = 6;
+	// The Netherlands
+	FPI008_FUELBRAND_AMIGO = 7;
+	// USA
+	FPI008_FUELBRAND_AMOCO = 8;
+	// The Netherlands
+	FPI008_FUELBRAND_ANWB = 9;
+	// Germany, Luxemburg
+	FPI008_FUELBRAND_ARAL = 10;
+	// USA
+	FPI008_FUELBRAND_ARCO = 11;
+	// The Netherlands
+	FPI008_FUELBRAND_ARGOS = 12;
+	// France
+	FPI008_FUELBRAND_ARMORINE = 13;
+	// France
+	FPI008_FUELBRAND_AS24 = 14;
+	// UK
+	FPI008_FUELBRAND_ASDA = 15;
+	// France
+	FPI008_FUELBRAND_ATAC = 16;
+	// France
+	FPI008_FUELBRAND_AUCHAN = 17;
+	// Independent distributor of fuels, Europe
+	FPI008_FUELBRAND_AVIA = 18;
+	// UK, Europe
+	FPI008_FUELBRAND_BP = 19;
+	// The Netherlands
+	FPI008_FUELBRAND_BRANDOIL = 20;
+	// UK
+	FPI008_FUELBRAND_BUTLER = 21;
+	// UK
+	FPI008_FUELBRAND_BWOC = 22;
+	// Caltex is a petroleum brand name of  the Chevron Corporation., and is used in the Asia-PAcific region, the Middle-East, and southern Africa.
+	FPI008_FUELBRAND_CALTEX = 23;
+	// France
+	FPI008_FUELBRAND_CAMPUS = 24;
+	// UK
+	FPI008_FUELBRAND_CARLTON = 25;
+	// France
+	FPI008_FUELBRAND_CARREFOUR = 26;
+	// USA
+	FPI008_FUELBRAND_CASEYS = 27;
+	// France
+	FPI008_FUELBRAND_CASINO = 28;
+	// USA
+	FPI008_FUELBRAND_CENEX = 29;
+	// France
+	FPI008_FUELBRAND_CHAMPION = 30;
+
+	FPI008_FUELBRAND_CHEVRON = 31;
+	// USA
+	FPI008_FUELBRAND_CIRCLE_K = 32;
+	// USA
+	FPI008_FUELBRAND_CITGO = 33;
+	// USA
+	FPI008_FUELBRAND_CLARK = 34;
+	// France
+	FPI008_FUELBRAND_CO_OP = 35;
+	// France
+	FPI008_FUELBRAND_COCCINELLE = 36;
+	// France
+	FPI008_FUELBRAND_COLRUYT = 37;
+	// USA
+	FPI008_FUELBRAND_CONOCO = 38;
+	// France
+	FPI008_FUELBRAND_COMOD = 39;
+	// Chili
+	FPI008_FUELBRAND_COPEC = 40;
+	// France
+	FPI008_FUELBRAND_CORA = 41;
+	// USA
+	FPI008_FUELBRAND_COSTCO = 42;
+	// USA
+	FPI008_FUELBRAND_CUMBERLAND_FARMS = 43;
+	// France
+	FPI008_FUELBRAND_DCA = 44;
+	// France
+	FPI008_FUELBRAND_DYNEFF = 45;
+	// USA
+	FPI008_FUELBRAND_E_Z_MART = 46;
+	// France
+	FPI008_FUELBRAND_ECOMARCHE = 47;
+	// France
+	FPI008_FUELBRAND_ED = 48;
+	// France
+	FPI008_FUELBRAND_ELAN = 49;
+	// Emo oil, Ireland
+	FPI008_FUELBRAND_EMO = 50;
+	// France
+	FPI008_FUELBRAND_ELF = 51;
+	// France
+	FPI008_FUELBRAND_ELF_JAUNE = 52;
+	// Europe
+	FPI008_FUELBRAND_ESSO = 53;
+	// France
+	FPI008_FUELBRAND_ESSO_EXPRESS = 54;
+	// Global brand.
+	FPI008_FUELBRAND_EXXON = 55;
+	// Europe, USA
+	FPI008_FUELBRAND_FINA = 56;
+	// The Netherlands
+	FPI008_FUELBRAND_FIREZONE = 57;
+	// France
+	FPI008_FUELBRAND_FRANPRIX = 58;
+	// France
+	FPI008_FUELBRAND_G20 = 59;
+	// Portugal
+	FPI008_FUELBRAND_GALP = 60;
+
+	FPI008_FUELBRAND_GAS_AMERICA = 61;
+	// France
+	FPI008_FUELBRAND_GEANT = 62;
+	// USA, brand marketed by Lukoil
+	FPI008_FUELBRAND_GETTY = 63;
+	// UK
+	FPI008_FUELBRAND_GLEANER = 64;
+	// UK, Europe
+	FPI008_FUELBRAND_GULF = 65;
+	// Western Australia and New Zealand
+	FPI008_FUELBRAND_GULL = 66;
+	// USA
+	FPI008_FUELBRAND_HESS = 67;
+	// USA
+	FPI008_FUELBRAND_HOLIDAY = 68;
+	// Canada
+	FPI008_FUELBRAND_HUSKY = 69;
+	// Sweden
+	FPI008_FUELBRAND_HYDRO = 70;
+	// France
+	FPI008_FUELBRAND_HYPER_U = 71;
+	// France
+	FPI008_FUELBRAND_IDS = 72;
+	// France
+	FPI008_FUELBRAND_INTERMARCHE = 73;
+	// UK, Europe
+	FPI008_FUELBRAND_JET = 74;
+	// France
+	FPI008_FUELBRAND_KAI = 75;
+	// USA
+	FPI008_FUELBRAND_KANGAROO = 76;
+	// USA
+	FPI008_FUELBRAND_KROGER = 77;
+	// USA
+	FPI008_FUELBRAND_KUM_GO = 78;
+	// USA
+	FPI008_FUELBRAND_KWIK_FILL = 79;
+	// USA
+	FPI008_FUELBRAND_KWIK_TRIP = 80;
+	// France
+	FPI008_FUELBRAND_LEADER_PRICE = 81;
+	// France
+	FPI008_FUELBRAND_LECLERC = 82;
+	// France
+	FPI008_FUELBRAND_LIBRECO = 83;
+	// France
+	FPI008_FUELBRAND_LIDL = 84;
+	// Poland
+	FPI008_FUELBRAND_LOTOS = 85;
+	// USA
+	FPI008_FUELBRAND_LOVES = 86;
+	// USA, Europe
+	FPI008_FUELBRAND_LUKOIL = 87;
+	// USA
+	FPI008_FUELBRAND_MAPCO = 88;
+	// USA
+	FPI008_FUELBRAND_MARATHON = 89;
+	// France
+	FPI008_FUELBRAND_MARCHE_U = 90;
+	// France
+	FPI008_FUELBRAND_MARTENS = 91;
+	// France
+	FPI008_FUELBRAND_MATCH = 92;
+	// France
+	FPI008_FUELBRAND_MAXI_COOP = 93;
+	// France
+	FPI008_FUELBRAND_MAXIMARCHE = 94;
+	// Ireland, UK
+	FPI008_FUELBRAND_MAXOL = 95;
+	// Europe
+	FPI008_FUELBRAND_MOBIL = 96;
+	// USA
+	FPI008_FUELBRAND_MOBILE = 97;
+	// Canada
+	FPI008_FUELBRAND_MOHAWK = 98;
+	// Hungary
+	FPI008_FUELBRAND_MOL = 99;
+	// France
+	FPI008_FUELBRAND_MONOPRIX = 100;
+	// UK
+	FPI008_FUELBRAND_MORRISONS = 101;
+	// UK
+	FPI008_FUELBRAND_MURCO = 102;
+	// USA
+	FPI008_FUELBRAND_MURPHY_USA = 103;
+	// France
+	FPI008_FUELBRAND_MUTANT = 104;
+	// UK
+	FPI008_FUELBRAND_NATIONAL = 105;
+	// France
+	FPI008_FUELBRAND_NERS = 106;
+	// France
+	FPI008_FUELBRAND_NERVOL = 107;
+	// France
+	FPI008_FUELBRAND_NETTO = 108;
+	// France
+	FPI008_FUELBRAND_OIL_FRANCE = 109;
+	// Austria, Germany, Eastern Europe
+	FPI008_FUELBRAND_OMV = 110;
+	// UK
+	FPI008_FUELBRAND_PACE = 111;
+	// Mexico
+	FPI008_FUELBRAND_PEMEX = 112;
+	// Canada
+	FPI008_FUELBRAND_PETRO_CANADA = 113;
+	// France
+	FPI008_FUELBRAND_PETRODIS = 114;
+	// USA
+	FPI008_FUELBRAND_PHILLIPS_66 = 115;
+	// USA, fuel and truck stops
+	FPI008_FUELBRAND_PILOT = 116;
+	// UK
+	FPI008_FUELBRAND_POWER = 117;
+	// France
+	FPI008_FUELBRAND_PRIMAGAZ = 118;
+	// UK
+	FPI008_FUELBRAND_PROTEUS = 119;
+	// France
+	FPI008_FUELBRAND_PROXI = 120;
+	// Europe
+	FPI008_FUELBRAND_Q8 = 121;
+	// USA
+	FPI008_FUELBRAND_QUIK_TRIP = 122;
+	// USA
+	FPI008_FUELBRAND_RACETRAC = 123;
+	// USA
+	FPI008_FUELBRAND_RACEWAY = 124;
+	// UK
+	FPI008_FUELBRAND_REGENT = 125;
+	// UK
+	FPI008_FUELBRAND_RIX = 126;
+	// France
+	FPI008_FUELBRAND_ROND_POINT = 127;
+	// USA
+	FPI008_FUELBRAND_SAFEWAY = 128;
+	// UK
+	FPI008_FUELBRAND_SAINSBURYS = 129;
+	// USA
+	FPI008_FUELBRAND_SAMS_CLUB = 130;
+	// South Africa
+	FPI008_FUELBRAND_SASOL = 131;
+	// UK
+	FPI008_FUELBRAND_SCOTTISH_FUELS = 132;
+	// USA
+	FPI008_FUELBRAND_SHAMROCK = 133;
+	// USA
+	FPI008_FUELBRAND_SHEETZ = 134;
+	// Global brand
+	FPI008_FUELBRAND_SHELL = 135;
+	// The Netherlands
+	FPI008_FUELBRAND_SHELL_EXPRESS = 136;
+	// France
+	FPI008_FUELBRAND_SHOPI = 137;
+	// France
+	FPI008_FUELBRAND_SILIGOM = 138;
+	// USA
+	FPI008_FUELBRAND_SINCLAIR = 139;
+	// UK
+	FPI008_FUELBRAND_SOMERFIELD = 140;
+	// UK
+	FPI008_FUELBRAND_SPAR = 141;
+	// USA
+	FPI008_FUELBRAND_SPEEDWAY = 142;
+	// Scandinavia
+	FPI008_FUELBRAND_STATOIL = 143;
+	// France
+	FPI008_FUELBRAND_STATIONMARCHE = 144;
+	// USA
+	FPI008_FUELBRAND_STEWARTS = 145;
+	// USA
+	FPI008_FUELBRAND_STRIPES = 146;
+	// USA
+	FPI008_FUELBRAND_SUNOCO = 147;
+	// France
+	FPI008_FUELBRAND_SUPER_U = 148;
+	// The Netherlands
+	FPI008_FUELBRAND_TAMOIL = 149;
+	// The Netherlands
+	FPI008_FUELBRAND_TANGO = 150;
+	// Finland, subsidiary of Lukoil
+	FPI008_FUELBRAND_TEBOIL = 151;
+	// UK
+	FPI008_FUELBRAND_TESCO = 152;
+	// USA
+	FPI008_FUELBRAND_TESORO = 153;
+	// Europe
+	FPI008_FUELBRAND_TEXACO = 154;
+	// UK
+	FPI008_FUELBRAND_THAMES = 155;
+	// The Netherlands
+	FPI008_FUELBRAND_TINQ = 156;
+	// Ireland
+	FPI008_FUELBRAND_TOP = 157;
+	// France, plus selected countries in Europe, Africa and Asia
+	FPI008_FUELBRAND_TOTAL = 158;
+	// Ireland
+	FPI008_FUELBRAND_TOPAZ = 159;
+	// UK
+	FPI008_FUELBRAND_UK = 160;
+	// Canada
+	FPI008_FUELBRAND_ULTRAMAR = 161;
+	// Scandinavia
+	FPI008_FUELBRAND_UNO_X = 162;
+	// USA
+	FPI008_FUELBRAND_VALERO = 163;
+	// USA
+	FPI008_FUELBRAND_WAWA = 164;
+	// UK
+	FPI008_FUELBRAND_WCF = 165;
+	// USA
+	FPI008_FUELBRAND_WILCO = 166;
+	// Atlantic provinces of Canada
+	FPI008_FUELBRAND_WILSON_GAS_STOPS = 167;
+	// Norway and Denmark
+	FPI008_FUELBRAND_YX_ENERGI = 168;
+	// USA
+	FPI008_FUELBRAND_ALLSUPS = 169;
+	// USA
+	FPI008_FUELBRAND_FAST_STOP = 170;
+	// USA
+	FPI008_FUELBRAND_FLYING_J = 171;
+	// USA
+	FPI008_FUELBRAND_IRVING = 172;
+	// USA
+	FPI008_FUELBRAND_JACKSONS_FOOD_STORES = 173;
+	// USA
+	FPI008_FUELBRAND_MAVERIK = 174;
+	// USA
+	FPI008_FUELBRAND_PETRO_SOUTH = 175;
+	// USA
+	FPI008_FUELBRAND_SUPER_AMERICA = 176;
+	// USA
+	FPI008_FUELBRAND_TRAVELCENTERS_OF_AMERICA = 177;
+	// USA
+	FPI008_FUELBRAND_TURKEY_HILL = 178;
+	// Name not defined (or unbranded station).
+	FPI008_FUELBRAND_UNDEFINED = 255;
+}
+// Alternative list of well-known fuel Brands. For these brands logo's could be provided to client devices. This second alternative list  allows 500 global Fuel Brands to be defined.
+enum Fpi009_AltFuelBrand {
+
+	FPI009_ALTFUELBRAND_UNKNOWN = 0;
+
+	FPI009_ALTFUELBRAND_UNDEFINED = 255;
+}

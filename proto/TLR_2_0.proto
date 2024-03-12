@@ -1,0 +1,43 @@
+syntax = "proto3";
+
+package tpeg.tlr;
+import "TPEG/TPEGDataTypes_2_1.proto";
+
+// Defines the collection of optional precise TMC location coding.
+message PreciseTMCInformation {
+	// 0 = 100m, 1 = 500m, 2 = 1km, 3 = more than 1km
+	// 100m if attribute is absent.
+	optional uint32 distanceAccuracy = 1;
+	// Upstream distance from primary location (against the direction of traffic), also known as D1. Range up to 25km calculated in steps of 100m
+	optional uint32 hazardDistance1 = 2;
+	// Same as hazardDistance1 but range up to 6553km
+	optional uint32 hazardDistance2 = 3;
+	// Distance the start of the problem to the end of the problem. Which is not necessarily the primary location. Length up to 25km
+	optional uint32 problemLength1 = 4;
+	// Same as problemLength1 but length up to 6553km
+	optional uint32 problemLength2 = 5;
+}
+// The TMC location stores a pre-coded location description including the possibility to code precisely a part of a road section in-between TMC locations.
+message TMCLocationReference {
+	// The actual location number. (Primary location)
+	uint32 locationID = 1;
+	// Defines the different countries being responsible for the database creation. The table of country codes is specified in ISO 14819-3
+	uint32 countryCode = 2;
+	// The value is specified per country and may differ over time.
+	uint32 locationTableNumber = 3;
+	// if the direction flag is true it means positive direction i.e. following to the successor in the location list.
+	bool direction = 4;
+	// If set to true the location shall be treated as being applicable for both directions. 
+	// NOTE: Be aware that ISO18234 defines this information in two peaces. 1. implicitly per event code and 2. as inversion bit In the control code.
+	bool bothDirections = 5;
+	// Number of hops in the linked list of location codes. The direction is defined by the direction attribute. Absent value is defined 0 and means inside the current location.
+	optional uint32 extent = 6;
+	// In non-European countries, the full range of location tables per country code can be used provided that the Extended Country Code associated with the ALERT-C location table is defined and provided (Extended Country Codes are defined in IEC 62106:2000)
+	optional uint32 extendedCountryCode = 7;
+	// if one byte 4 bits for major and 3 bits for minor
+	// if two bytes 7 bits for major and 7 bits for minor
+	// three bytes not possible because TMC restricts to 0-99 for both
+	optional uint32 locationTableVersion = 8;
+
+	optional PreciseTMCInformation preciseTMCInfo = 9;
+}

@@ -1,0 +1,865 @@
+syntax = "proto3";
+
+package tpeg.pki;
+import "TPEG/LRC_3_0.proto";
+import "TPEG/MMC_1_1.proto";
+
+import "TPEG/TPEGDataTypes_2_1.proto";
+// A parking message holds one of the MessageManagement components and can have ParkingLocation, ParkingSiteDescription and Advice components as well as one CurrentCapacity and several ExpectedCapacity components.
+// [TODO: include image of ParkingMessage structure]
+// Methods of the TPEG Message Management Container [TODO:Add reference] can be used to transmit static data independent from the dynamic data. The components have been grouped to easily allow such dynamic updates.
+// For example the name and the location of a parking site do not change frequently and thus these data can be transmitted less frequently, unlike the number of available spaces. It is important none the less that the basic information required to display a sensible message to the user should be sent in suitable intervals to allow receivers just switched on to decode data within reasonable time.
+// Clients should decode messages with the same version number (and PartID in case of partial messages) only once.
+message ParkingMessage {
+	// Includes one of the Message Management Container types.
+	MMCSwitch mmt = 100;
+	// As defined in external TPEG2-Location Referencing specification.
+	optional tpeg.lrc.LocationReferencingContainer parkingLocation = 200;
+
+	optional ParkingSiteDescription parkingSiteDescription = 201;
+
+	optional CurrentCapacity currentCapacity = 202;
+
+	repeated ExpectedCapacity expectedCapacity = 203;
+
+	repeated Advice advice = 204;
+}
+// Abstract container to allow the usage of the different Message Management Options.
+message MMCSwitch {
+	oneof MMCSwitch_opt {
+		tpeg.mmc.MessageManagementContainer messageManagementContainer = 1;
+		tpeg.mmc.MMCMasterMessage mMCMasterMessage = 2;
+		tpeg.mmc.MMCMessagePart mMCMessagePart = 3;
+	}
+}
+// The ParkingSiteDescription component is a wrapper for mostly static information about a parking facility. The information is grouped in the ParkingName, ParkingSpecification, OpeningHours,  PricingPayment, Facilities, ParkingForEvent and AssociatedService components.
+// [TODO: include image of ParkingSiteDescription structure]
+message ParkingSiteDescription {
+
+	optional ParkingInfo parkingInfo = 200;
+
+	optional ParkingSpecification parkingSpecification = 201;
+
+	repeated ParkingForEvent parkingForEvent = 202;
+
+	repeated OpeningHours openingHours = 203;
+
+	repeated PricingPayment pricingPayment = 204;
+
+	repeated Facilities facilities = 205;
+
+	repeated AssociatedService associatedService = 206;
+}
+// The ParkingInfo component contains address and contact information about a parking facility to be displayed to the user. This includes name, address, operator, logo and the contact details.
+message ParkingInfo {
+	// This attribute may hold a parking site specific ID string, allowing linking this site to other referencing schemes. It shall not contain language specific descriptions and should preferably not be presented to the user as a description.
+	optional string parkingId = 1;
+	// Name of the parking in various languages.
+	repeated tpeg.datatypes.LocalisedShortString parkingName = 2;
+	// Address of the parking in language specific formats.
+	// e.g.for German: Frauensteige 2, D-89075 Ulm
+	repeated tpeg.datatypes.LocalisedShortString parkingAddress = 3;
+	// Language specific strings representing the name and/or company of the operator.
+	repeated tpeg.datatypes.LocalisedShortString parkingOperator = 4;
+
+	optional Logo logo = 200;
+
+	repeated Contact contact = 201;
+}
+// The logo component provides a URI and a mimeType for a company or parking site logo type. It does not contain the image data itself.
+message Logo {
+	// The mime type of the image at the provided source.
+	string mimeType = 1;
+	// URI where the logo can be retrieved.
+	string src = 2;
+}
+// This component provides contact information.
+message Contact {
+	// Indicates the type of the information in the contactInfo attribute.
+	Pki016_ContactType contactType = 1;
+	// The actual contact information of the type indicated in the contactType attribute.
+	string contactInfo = 2;
+}
+// The ParkingSpecification component contains detailed and  mostly static information about a parking facility describing properties of the parking site. This includes the type of parking and the maximum capacity among other information.
+// [TODO: include image of structure of ParkingSpecification]
+message ParkingSpecification {
+	// Indicates the over all type for the parking.
+	Pki002_ParkingType parkingType = 1;
+	// Classifies the site with respect to the maximum allowed parking time or pricing schema. For example short term parking sites are usually very expensive for long term use.  For the rare case that a parking site offers places for several term types, the parking site should be represented as one separate "virtual" parking site for each term type.
+	optional Pki019_TermType parkingTerm = 2;
+	// Total number of max available spaces.
+	optional uint32 parkingCapacity = 3;
+	// Indicates whether it is possible to reserve places.
+	optional Pki007_Reservability reservability = 4;
+
+	repeated InformationFor informationFor = 200;
+
+	optional SizeRestrictions sizeRestrictions = 201;
+
+	repeated GateInfo gateInfo = 202;
+}
+// The InformationFor component contains more detailed information for specific vehicle types, user groups or fuel types. This component allows targeted information to be delivered to particular groups, such as disabled drivers for example, with regard to the parking duration, the number of reserved spaces, the maximum number of available spaces and other specific information. The component can further signal who may or may not use the particular site. The number of reserved spaces can e.g. be encoded as a component with userType "reservation holders".
+// The numbers contained within this component are a subset of the numbers indicated in the attributes of the ParkingSpecification component. The sum of the numbers might be larger than the total number of available spaces, because there may be overlapping groups. For example all of the spaces available for a certain user group, might be also available for a special vehicle type.
+message InformationFor {
+	// This attribute indicates the vehicle type the information in the component is valid for
+	optional Pki001_VehicleType vehicleType = 1;
+	// This attribute indicates the user type the information in the component is valid for
+	optional Pki003_UserType userType = 2;
+	// This attribute indicates the fuel type a vehicle must use for the information in this component to be valid
+	optional Pki004_FuelType fuelType = 3;
+	// If set to true, the following attribute 'Prohibited' contains valid information. If set to false, the following attribute shall be ignored.
+	bool validity = 4;
+	// If set to true, the usage of this site is prohibited for groups indicated by the above attributes. If set to false the use is explicitly allowed.
+	bool prohibited = 5;
+	// Holds information about the term the parking is available for the indicated group.
+	optional Pki019_TermType parkingTerm = 6;
+	// Number of spaces available for the indicated group.
+	optional uint32 parkingCapacity = 7;
+}
+// The SizeRestrictions component defines physical limits concerning the maximum size of vehicles that can use the parking site.
+message SizeRestrictions {
+	// The maximum length in centimeters.
+	optional uint32 maxLength = 1;
+	// The maximum height in centimeters.
+	optional uint32 maxHeight = 2;
+	// The maximum width in centimeters.
+	optional uint32 maxWidth = 3;
+	// The maximum weight in kilogram.
+	optional uint32 maxWeight = 4;
+}
+// GateInfo provides further details for individual gates. It can hold a ParkingLocation to accurately identify the location of the specific gate.
+message GateInfo {
+	// Language specific names for the gate to be presented to the user.
+	repeated tpeg.datatypes.LocalisedShortString gateName = 1;
+	// Specifies the type of the gate.
+	optional Pki015_GateType gateType = 2;
+	// The minimum width of the gate.
+	optional uint32 gateWidth = 3;
+	// The minimum height of the gate.
+	optional uint32 gateHeight = 4;
+	// Direction to the street listed in the street attribute. For example the next street from the gate is in direction "north".
+	optional tpeg.datatypes.Typ006_OrientationType directionTo = 5;
+	// The distance to the street listed in the street attribute. For example the next street from the gate is 1500 m away in the above mentioned direction.
+	optional uint32 distanceTo = 6;
+	// The language specific names of a street next to the gate. Only one street shall be named, although it can be named in various languages.
+	repeated tpeg.datatypes.LocalisedShortString street = 7;
+
+	optional tpeg.lrc.LocationReferencingContainer parkingLocation = 200;
+}
+// Parking sites sometimes offer places for visitors of major events or famous places, or are at times even especially set up for a specific event. The type and name of the event can be indicated within this component. Additional details about the event would be expected to be delivered via other TPEG applications. A separate component has to be used for each event.
+message ParkingForEvent {
+	// Allows indication of what kind of event the parking is for.
+	optional Pki006_EventType eventType = 1;
+	// A language specific name or description can be included to further specify the related event.
+	repeated tpeg.datatypes.LocalisedShortString eventDescription = 2;
+	// The type of the site for which this parking is for can be given.
+	optional Pki014_SiteServed siteType = 3;
+	// A language specific name or description can be included to further specify the related site.
+	repeated tpeg.datatypes.LocalisedShortString siteName = 4;
+
+	repeated Contact contact = 200;
+
+	repeated ToSite toSite = 201;
+}
+// This component provides information on how the related site can be reached.
+message ToSite {
+	// The distance in metres to reach the related facility.
+	optional uint32 spatialDistance = 1;
+	// Time in minutes it takes to the related facility using the indicated transportation.
+	optional uint32 temporalDistance = 2;
+	// The direction to the related facility.
+	optional tpeg.datatypes.Typ006_OrientationType directionTo = 3;
+	// The means of transportation for which the information in this component is valid.
+	optional Pki017_TransportType transportationType = 4;
+}
+// Times the parking is open with respect to vehicle and user type.
+message OpeningHours {
+	// Defines how the openingHours attribute has to be interpreted.
+	Pki018_OpeningHoursType openingHoursType = 1;
+	// The actual timespan encoded using the TimeToolkit container.
+	tpeg.datatypes.TimeToolkit openingHoursInfo = 2;
+	// The vehicle type for which the information within this component is valid.
+	optional Pki001_VehicleType vehicleType = 3;
+	// The information in this component is relevant for these users.
+	optional Pki003_UserType userType = 4;
+}
+// The PricingPayment component describes the the costs for parking at this parking location as well as further payment details.
+message PricingPayment {
+	// Defines what sort of fee is described within this component.
+	Pki022_FeeType feeType = 1;
+	// The actual amount of the fee, expressed in the currency specified in the currencyType attribute.
+	float amount = 2;
+	// The currency in which the amount of the fee is given.
+	tpeg.datatypes.Typ003_CurrencyType currencyType = 3;
+	// Time period for which this pricing information applies.
+	optional tpeg.datatypes.TimeToolkit time = 4;
+	// Limits the information to a vehicle type.
+	optional Pki001_VehicleType vehicleType = 5;
+	// Limits the information to a user type.
+	optional Pki003_UserType userType = 6;
+
+	repeated PaymentDetails paymentDetails = 200;
+}
+// The component PaymentDetails provides additional details on currencies, methods of payment and benefit information.
+message PaymentDetails {
+	// Payment is accepted in these currencies.
+	repeated tpeg.datatypes.Typ003_CurrencyType currencyType = 1;
+	// How the fee can be paid.
+	optional Pki013_PaymentMethod method = 2;
+	// Brands, products and company names that are accepted for the specified method of payment.
+	repeated string acceptedBrand = 3;
+	// Language specific announcement of a special benefit.
+	repeated tpeg.datatypes.LocalisedLongString benefitInfo = 4;
+}
+// The component Facilities indicates facilities and features, such as guided parking, which are available at the parking site and their operating hours as well as the user type.
+// Several facilities can be encoded in the attributes of one Facilities component at the same time, if they for example have identical operation hours.
+message Facilities {
+	// Features that are present at the parking facilitiy can be listed here.
+	repeated Pki005_AvailableFeatures availableFeatures = 1;
+	// The information is related to the parking guidance specified here.
+	optional Pki008_FacilityType parkingGuidanceType = 2;
+	// The information concerns this security type.
+	optional Pki010_SecurityType securityType = 3;
+	// The information is related to this supervision type.
+	optional Pki009_SupervisionType supervisionType = 4;
+	// This attribute is used to indicate the operation time for the informations provided in the other attributes of this component.
+	optional tpeg.datatypes.TimeToolkit operationHours = 5;
+	// The facility is relevant for this user type.
+	optional Pki003_UserType userType = 6;
+}
+// The component AssociatedService carries the description of associated services which are available at the parking site and usually have a name. Simple services that usually do not have a name may be indicated in the availableFeatures attribute in the Facilties component.
+message AssociatedService {
+	// The type of the associated service.
+	Pki011_AssociatedService serviceType = 1;
+	// Description of the service in relevant languages.
+	repeated tpeg.datatypes.LocalisedShortString serviceName = 2;
+	// Language specific strings representing the name and/or company of the operator.
+	repeated tpeg.datatypes.LocalisedShortString operator = 3;
+}
+// The CurrentCapacity element describes the current parking situation by means of the exact number of available spaces, tendencies and qualitative descriptions.
+// This component indicates the overall number of parking spaces available at the time of message generation. Contained components may specify the number and type of spaces the capacity refers to.
+message CurrentCapacity {
+	// The date and time when data has been measured or acquired.
+	optional fixed32 timestampDataAcquisition = 1;
+	// The number of all available spaces.
+	// This is a quantitative measure.
+	optional uint32 availableSpaces = 2;
+	// Number of occupied spaces in relation to the capacity specified in ParkingSpecification (0-100%).
+	optional uint32 parkingOccupancy = 3;
+	// Describes the overall status of the site with respect to parking occupancy.
+	optional Pki012_ParkingStatus fillState = 4;
+	// The difference (cars per hour) between the rate of vehicles entering the facility and the rate of vehicles exiting the facility. Negative numbers indicate that cars are leaving the site.
+	optional int32 fillStateRate = 5;
+	// Estimated time a user will have to wait in case currently no free parking places are available within this site.
+	optional tpeg.datatypes.TimeToolkit waitingTime = 6;
+	// The currently observed tendency. This is no prognosis.
+	optional Pki021_Tendency tendency = 7;
+
+	optional Pki007_Reservability reservability = 8;
+
+	repeated CurrentCapacityFor currentCapacityFor = 200;
+}
+// The component CurrentCapacityFor provides information on the current parking situation for a vehicle or user type to be defined.
+// If the availableSpaces attribute is left out, the component simply indicates that "There are spaces of this type" and does not specify how many.
+message CurrentCapacityFor {
+	// The type of vehicles for which the capacity value in this component applies.
+	optional Pki001_VehicleType vehicleType = 1;
+	// The type of users for which the capacity value in this component applies.
+	optional Pki003_UserType userType = 2;
+	// Describes in more detail for which users or vehicles spaces are available. If the availableSpaces attribute is omitted, it indicates that there are places of the specified type available.
+	// The summary of available spaces in all CurrentCapacityFor components may be larger than the total number of available spaces, because of overlapping set definitions.
+	optional uint32 availableSpaces = 3;
+	// Describes the overall status of the parking facility for the group of users and vehicle types specified. This is a more qualitative measure than the absolute number of available spaces attribute.
+	optional Pki012_ParkingStatus fillState = 4;
+}
+// The component ExpectedCapacity provides forecasts concerning the parking situation which may be encoded for multiple timepoints in the future.
+message ExpectedCapacity {
+	// Specifies the timepoint for which the prognosis is made.
+	tpeg.datatypes.TimeToolkit time = 1;
+	// Number of available places to be expected. This is an estimated number only.
+	optional uint32 expectedSpaces = 2;
+	// Rough qualitative estimation.
+	optional Pki012_ParkingStatus expectedStatus = 3;
+
+	repeated ExpectedCapacityFor expectedCapacityFor = 200;
+}
+// The ExpectedCapacityFor element alows to further specify the expected available spaces with repect to user type and vehicle type.
+message ExpectedCapacityFor {
+	// Number of available places to be expected. This is an estimated number only.
+	optional uint32 availableSpaces = 1;
+	// The type of user for which the capacity value in this component applies.
+	optional Pki003_UserType userType = 2;
+	// The type of vehicles for which the capacity value in this component applies.
+	optional Pki001_VehicleType vehicleType = 3;
+}
+// The component Advice provides helpful information concerning the parking situation which is given through instances of this component.
+message Advice {
+	// Advice concerning the parking from table pki020.
+	Pki020_Advice adviceText = 1;
+}
+// The Vehicle Type table lists various types of vehicles that might be addresses.
+enum Pki001_VehicleType {
+	// Service provider does not know at time of message generation.
+	PKI001_VEHICLETYPE_UNKNOWN = 0;
+
+	PKI001_VEHICLETYPE_ALL_CARS = 1;
+	// &lt; 7.5 tonne
+	PKI001_VEHICLETYPE_LIGHT_GOODS_VEHICLE = 2;
+	// &gt; 7.5 tonne
+	PKI001_VEHICLETYPE_HEAVY_GOODS_VEHICLE = 3;
+
+	PKI001_VEHICLETYPE_PEDAL_CYCLE = 4;
+
+	PKI001_VEHICLETYPE_VEHICLE_WITH_TRAILER = 5;
+
+	PKI001_VEHICLETYPE_HIGH_SIDED_VEHICLE = 6;
+	// Usually 4-8 seats.
+	PKI001_VEHICLETYPE_MINIBUS = 7;
+	// Usually 4 seats maximum
+	PKI001_VEHICLETYPE_TAXI = 8;
+
+	PKI001_VEHICLETYPE_MOTORCYCLE = 9;
+
+	PKI001_VEHICLETYPE_SMALL_CAR = 10;
+
+	PKI001_VEHICLETYPE_LARGE_CAR = 11;
+
+	PKI001_VEHICLETYPE_CAMPER_CAR = 12;
+
+	PKI001_VEHICLETYPE_CAR_WITH_TRAILER = 13;
+
+	PKI001_VEHICLETYPE_CAR_WITH_CARAVAN = 14;
+
+	PKI001_VEHICLETYPE_LIGHT_GOODS_VEHICLE_WITH_TRAILER = 15;
+
+	PKI001_VEHICLETYPE_HEAVY_GOODS_VEHICLE_WITH_TRAILER = 16;
+
+	PKI001_VEHICLETYPE_MOTORCYCLE_WITH_SIDECAR = 17;
+
+	PKI001_VEHICLETYPE_MOPED = 18;
+
+	PKI001_VEHICLETYPE_PASSENGER_CAR = 19;
+
+	PKI001_VEHICLETYPE_TRUCKS = 20;
+
+	PKI001_VEHICLETYPE_BUS = 21;
+
+	PKI001_VEHICLETYPE_UNDEFINED_VEHICLE_TYPE = 255;
+}
+// The Parking Type table lists different types of how a parking site is build.
+enum Pki002_ParkingType {
+	// Service provider does not know at time of message generation
+	PKI002_PARKINGTYPE_UNKNOWN = 0;
+
+	PKI002_PARKINGTYPE_SPECIAL = 1;
+
+	PKI002_PARKINGTYPE_OPEN_SPACE_ = 2;
+
+	PKI002_PARKINGTYPE_MULTI_STOREY_ = 3;
+
+	PKI002_PARKINGTYPE_UNDERGROUND_ = 4;
+
+	PKI002_PARKINGTYPE_COVERED = 5;
+
+	PKI002_PARKINGTYPE_NESTED = 6;
+
+	PKI002_PARKINGTYPE_FIELD = 7;
+
+	PKI002_PARKINGTYPE_ROAD_SIDE = 8;
+
+	PKI002_PARKINGTYPE_DROP_OFF_WITH_VALET = 9;
+
+	PKI002_PARKINGTYPE_DROP_OFF_MECHANICAL = 10;
+
+	PKI002_PARKINGTYPE_HIGHWAY = 11;
+
+	PKI002_PARKINGTYPE_PARK_AND_RIDE = 12;
+
+	PKI002_PARKINGTYPE_CAR_POOL = 13;
+
+	PKI002_PARKINGTYPE_CAMPGROUND = 14;
+
+	PKI002_PARKINGTYPE_PARKING_ZONE = 15;
+
+	PKI002_PARKINGTYPE_DOWNTOWN = 16;
+
+	PKI002_PARKINGTYPE_TEMPORARY = 17;
+
+	PKI002_PARKINGTYPE_KISS_AND_RIDE = 18;
+
+	PKI002_PARKINGTYPE_UNDECODABLE_PARKING_TYPE = 255;
+}
+// The User Type table allows to specify certain groups of people.
+enum Pki003_UserType {
+	// Service provider does not know at time of message generation.
+	PKI003_USERTYPE_UNKNOWN = 0;
+	// (logical plural)
+	PKI003_USERTYPE_ALL_USERS = 1;
+	// (logical plural)
+	PKI003_USERTYPE_SHOPPERS = 2;
+	// (logical plural)
+	PKI003_USERTYPE_HOTEL_GUESTS = 3;
+	// (logical plural)
+	PKI003_USERTYPE_SUBSCRIBERS = 4;
+	// (logical plural)
+	PKI003_USERTYPE_RESERVATION_HOLDERS = 5;
+	// (logical plural)
+	PKI003_USERTYPE_SEASON_TICKET_HOLDERS = 6;
+	// (logical plural)
+	PKI003_USERTYPE_REGISTERED_DISABLED_USERS = 7;
+	// (logical plural)
+	PKI003_USERTYPE_PREGNANT_WOMEN = 8;
+	// (logical plural)
+	PKI003_USERTYPE_WHEELCHAIR_USERS = 9;
+	// (logical plural)
+	PKI003_USERTYPE_ELDERLY_USERS = 10;
+	// (logical plural)
+	PKI003_USERTYPE_FAMILIES = 11;
+	// (logical plural)
+	PKI003_USERTYPE_MEN = 12;
+	// (logical plural)
+	PKI003_USERTYPE_WOMEN = 13;
+	// (logical plural)
+	PKI003_USERTYPE_PENSIONERS = 14;
+	// (logical plural)
+	PKI003_USERTYPE_STUDENTS = 15;
+
+	PKI003_USERTYPE_STAFF = 16;
+	// (logical plural)
+	PKI003_USERTYPE_EMPLOYEES = 17;
+	// (logical plural)
+	PKI003_USERTYPE_CUSTOMERS = 18;
+	// (logical plural)
+	PKI003_USERTYPE_VISITORS = 19;
+	// (logical plural)
+	PKI003_USERTYPE_MEMBERS = 20;
+
+	PKI003_USERTYPE_SHORT_TERM_PARKING_USER = 21;
+
+	PKI003_USERTYPE_LONG_TERM_PARKING_USER = 22;
+
+	PKI003_USERTYPE_OVERNIGHT_PARKING_USER_ = 23;
+	// (logical plural)
+	PKI003_USERTYPE_SPORT_EVENT_AWAY_SUPPORTERS = 24;
+	// (logical plural)
+	PKI003_USERTYPE_SPORT_EVENT_HOME_SUPPORTERS = 25;
+
+	PKI003_USERTYPE_UNDECODABLE_USER_TYPE = 255;
+}
+// The Fuel Type table lists all sorts of fuels.
+enum Pki004_FuelType {
+	// Service provider does not know at time of message generation
+	PKI004_FUELTYPE_UNKNOWN = 0;
+
+	PKI004_FUELTYPE_ALL = 1;
+
+	PKI004_FUELTYPE_95_OCTANE_PETROL = 2;
+
+	PKI004_FUELTYPE_98_OCTANE_PETROL = 3;
+
+	PKI004_FUELTYPE_DIESEL = 4;
+
+	PKI004_FUELTYPE_LPG = 5;
+
+	PKI004_FUELTYPE_UNLEADED_PETROL = 6;
+
+	PKI004_FUELTYPE_LEADED_PETROL = 7;
+
+	PKI004_FUELTYPE_HYDROGEN = 8;
+
+	PKI004_FUELTYPE_ELECTRIC = 9;
+
+	PKI004_FUELTYPE_ALCOHOL = 10;
+
+	PKI004_FUELTYPE_UNDECODABLE_FUEL_TYPE = 255;
+}
+// The AvailableFeatrues table lists features that might be available.
+enum Pki005_AvailableFeatures {
+	// Service provider does not know at time of message generation
+	PKI005_AVAILABLEFEATURES_UNKNOWN = 0;
+
+	PKI005_AVAILABLEFEATURES_NONE = 1;
+
+	PKI005_AVAILABLEFEATURES_WHEELCHAIR_ACCESSIBLE = 2;
+
+	PKI005_AVAILABLEFEATURES_INTERNET_HOTSPOTS = 3;
+
+	PKI005_AVAILABLEFEATURES_ELECTRICITY_AVAILABLE = 4;
+
+	PKI005_AVAILABLEFEATURES_TOILET = 5;
+
+	PKI005_AVAILABLEFEATURES_PUBLIC_TELEPHONE = 6;
+
+	PKI005_AVAILABLEFEATURES_SHOWER_FACILITY = 7;
+
+	PKI005_AVAILABLEFEATURES_VENDING_MACHINE = 8;
+
+	PKI005_AVAILABLEFEATURES_INFORMATION_POINT = 9;
+
+	PKI005_AVAILABLEFEATURES_UNDECODABLE_FEATURE = 255;
+}
+// The EventType table lists different events for which parking might be provided.
+enum Pki006_EventType {
+	// Service provider does not know at time of message generation
+	PKI006_EVENTTYPE_UNKNOWN = 0;
+
+	PKI006_EVENTTYPE_OPEN_AIR_CONCERT = 1;
+
+	PKI006_EVENTTYPE_CONCERT = 2;
+
+	PKI006_EVENTTYPE_SOUND_AND_LIGHT_SHOW = 3;
+
+	PKI006_EVENTTYPE_ART_EVENT = 4;
+
+	PKI006_EVENTTYPE_FLOWER_EVENT = 5;
+
+	PKI006_EVENTTYPE_BEER_FESTIVAL = 6;
+
+	PKI006_EVENTTYPE_FOOD_FESTIVAL = 7;
+
+	PKI006_EVENTTYPE_WINE_FESTIVAL = 8;
+
+	PKI006_EVENTTYPE_THEATRICAL_EVENT = 9;
+
+	PKI006_EVENTTYPE_FIREWORK_DISPLAY = 10;
+
+	PKI006_EVENTTYPE_SPORT_AND_GAME = 11;
+
+	PKI006_EVENTTYPE_STREET_FESTIVAL = 12;
+
+	PKI006_EVENTTYPE_FILM_FESTIVAL = 13;
+
+	PKI006_EVENTTYPE_EXHIBITION = 14;
+
+	PKI006_EVENTTYPE_PARADE = 15;
+
+	PKI006_EVENTTYPE_UNDECODABLE_EVENT_TYPE = 255;
+}
+// The Reservability table gives information about the reservability at a parking site.
+enum Pki007_Reservability {
+	// Service provider does not know at time of message generation
+	PKI007_RESERVABILITY_UNKNOWN = 0;
+
+	PKI007_RESERVABILITY_PARTLY_RESERVABLE = 1;
+
+	PKI007_RESERVABILITY_RESERVABLE = 2;
+
+	PKI007_RESERVABILITY_NOT_RESERVABLE = 3;
+
+	PKI007_RESERVABILITY_RESERVATION_REQUIRED = 4;
+
+	PKI007_RESERVABILITY_UNDECODABLE_RESERVATION_STATUS = 255;
+}
+// The FacilityType table lists facilities that may be available at a parking site.
+enum Pki008_FacilityType {
+	// Service provider does not know at time of message generation
+	PKI008_FACILITYTYPE_UNKNOWN = 0;
+
+	PKI008_FACILITYTYPE_MECHANICAL_PARKING = 1;
+
+	PKI008_FACILITYTYPE_VALET_PARKING = 2;
+
+	PKI008_FACILITYTYPE_AUTOMATIC_SPACE_GUIDANCE = 3;
+
+	PKI008_FACILITYTYPE_STAFF_GUIDES_TO_SPACE = 4;
+
+	PKI008_FACILITYTYPE_VEHICLE_LIFT = 5;
+
+	PKI008_FACILITYTYPE_UNDECODABLE_FACILITY_TYPE = 255;
+}
+// The SupervisionType table allows to specify if and how a site is supervised.
+enum Pki009_SupervisionType {
+	// Service provider does not know at time of message generation
+	PKI009_SUPERVISIONTYPE_UNKNOWN = 0;
+
+	PKI009_SUPERVISIONTYPE_NONE = 1;
+
+	PKI009_SUPERVISIONTYPE_REMOTE = 2;
+
+	PKI009_SUPERVISIONTYPE_ON_SITE = 3;
+
+	PKI009_SUPERVISIONTYPE_CONTROL_CENTRE_ON_SITE = 4;
+
+	PKI009_SUPERVISIONTYPE_CONTROL_CENTRE_OFF_SITE = 5;
+
+	PKI009_SUPERVISIONTYPE_PATROL = 6;
+
+	PKI009_SUPERVISIONTYPE_UNDECODABLE_SUPERVISION_TYPE = 255;
+}
+// The SecurityType table lists security measures that may be associated with a parking site.
+enum Pki010_SecurityType {
+	// Service provider does not know at time of message generation
+	PKI010_SECURITYTYPE_UNKNOWN = 0;
+
+	PKI010_SECURITYTYPE_NONE = 1;
+
+	PKI010_SECURITYTYPE_SECURITY_STAFF = 2;
+
+	PKI010_SECURITYTYPE_CCTV = 3;
+
+	PKI010_SECURITYTYPE_DOG = 4;
+
+	PKI010_SECURITYTYPE_UNDECODABLE_SECURITY_TYPE = 255;
+}
+// The AssociatedService table lists services that may be associated with a parking site.
+enum Pki011_AssociatedService {
+	// Service provider does not know at time of message generation
+	PKI011_ASSOCIATEDSERVICE_UNKNOWN = 0;
+
+	PKI011_ASSOCIATEDSERVICE_FUEL_STATION = 1;
+
+	PKI011_ASSOCIATEDSERVICE_RESTAURANT = 2;
+
+	PKI011_ASSOCIATEDSERVICE_OVERNIGHT_ACCOMMODATION = 3;
+
+	PKI011_ASSOCIATEDSERVICE_VEHICLE_MAINTENANCE_FACILITY = 4;
+
+	PKI011_ASSOCIATEDSERVICE_SHOP = 5;
+
+	PKI011_ASSOCIATEDSERVICE_KIOSK = 6;
+
+	PKI011_ASSOCIATEDSERVICE_PHARMACY = 7;
+
+	PKI011_ASSOCIATEDSERVICE_CAFE = 8;
+
+	PKI011_ASSOCIATEDSERVICE_CAR_WASH = 9;
+
+	PKI011_ASSOCIATEDSERVICE_REPAIR_SHOP = 10;
+
+	PKI011_ASSOCIATEDSERVICE_UNDECODABLE_SERVICE = 255;
+}
+// The ParkingStatus table describes the over all situation of a parking site.
+enum Pki012_ParkingStatus {
+	// Service provider does not know at time of message generation
+	PKI012_PARKINGSTATUS_UNKNOWN = 0;
+
+	PKI012_PARKINGSTATUS_FULL = 1;
+
+	PKI012_PARKINGSTATUS_BUSY = 2;
+
+	PKI012_PARKINGSTATUS_VACANT = 3;
+
+	PKI012_PARKINGSTATUS_CLOSED = 4;
+
+	PKI012_PARKINGSTATUS_NO_PARKING_ALLOWED = 5;
+	// Only spaces for special users or vehicle types available.
+	PKI012_PARKINGSTATUS_SPECIAL_CONDITIONS_APPLY = 6;
+
+	PKI012_PARKINGSTATUS_UNDECODABLE_PARKING_STATUS = 255;
+}
+// The PaymentMethod table allows to specify the methods that may be used for payments.
+enum Pki013_PaymentMethod {
+	// Service provider does not know at time of message generation
+	PKI013_PAYMENTMETHOD_UNKNOWN = 0;
+
+	PKI013_PAYMENTMETHOD_CASH = 1;
+
+	PKI013_PAYMENTMETHOD_CREDIT_CARD = 2;
+
+	PKI013_PAYMENTMETHOD_ELECTRONIC_SETTLEMENT = 3;
+
+	PKI013_PAYMENTMETHOD_TICKET = 4;
+
+	PKI013_PAYMENTMETHOD_TOKEN = 5;
+
+	PKI013_PAYMENTMETHOD_DIRECT_CASH_TRANSFER = 6;
+
+	PKI013_PAYMENTMETHOD_RFID = 7;
+
+	PKI013_PAYMENTMETHOD_PRE_PAY_CARD = 8;
+
+	PKI013_PAYMENTMETHOD_MOBILE_PHONE = 9;
+
+	PKI013_PAYMENTMETHOD_SMARTCARD = 10;
+
+	PKI013_PAYMENTMETHOD_UNDECODABLE_PAYMENT_METHOD = 255;
+}
+// The SiteServed table lists relevant categories of sites that may be served by a parking site.
+enum Pki014_SiteServed {
+	// Service provider does not know at time of message generation
+	PKI014_SITESERVED_UNKNOWN = 0;
+
+	PKI014_SITESERVED_AIRPORT_TERMINAL = 1;
+
+	PKI014_SITESERVED_FERRY_TERMINAL = 2;
+	// For loading vehicles on trains
+	PKI014_SITESERVED_VEHICLE_ON_RAIL_TERMINAL = 3;
+	// For long distance travel
+	PKI014_SITESERVED_COACH_STATION = 4;
+
+	PKI014_SITESERVED_CABLE_CAR_STATION = 5;
+
+	PKI014_SITESERVED_SHOPPING_CENTRE = 6;
+
+	PKI014_SITESERVED_PUBLIC_TRANSPORT_STATION = 7;
+
+	PKI014_SITESERVED_MARKET = 8;
+
+	PKI014_SITESERVED_RELIGIOUS_CENTRE = 9;
+
+	PKI014_SITESERVED_CONVENTION_CENTRE = 10;
+
+	PKI014_SITESERVED_EXHIBITION_CENTRE = 11;
+
+	PKI014_SITESERVED_SKI_LIFT = 12;
+
+	PKI014_SITESERVED_CINEMA = 13;
+
+	PKI014_SITESERVED_UNDECODABLE_SITE = 255;
+}
+// The GateType table defines of which sort a gate is.
+enum Pki015_GateType {
+	// Service provider does not know at time of message generation
+	PKI015_GATETYPE_UNKNOWN = 0;
+
+	PKI015_GATETYPE_VEHICLE_ENTRANCE = 1;
+
+	PKI015_GATETYPE_VEHICLE_EXIT = 2;
+
+	PKI015_GATETYPE_VEHICLE_RENTAL_RETURN = 3;
+	// common simplification
+	PKI015_GATETYPE_VEHICLE_EXIT_AND_ENTRANCE = 4;
+	// common simplification
+	PKI015_GATETYPE_PEDESTRIAN_ENTRANCE = 5;
+
+	PKI015_GATETYPE_UNDECODABLE_GATE_TYPE = 255;
+}
+// The ContactType table lists various methods to contact someone.
+enum Pki016_ContactType {
+	// Service provider does not know at time of message generation
+	PKI016_CONTACTTYPE_UNKNOWN = 0;
+
+	PKI016_CONTACTTYPE_TELEPHONE = 1;
+
+	PKI016_CONTACTTYPE_FAX = 2;
+
+	PKI016_CONTACTTYPE_E_MAIL = 3;
+
+	PKI016_CONTACTTYPE_INTERNET_ADDRESS = 4;
+	// To on-site staff
+	PKI016_CONTACTTYPE_PRIORY_TELEPHONE = 5;
+	// To off-site staff
+	PKI016_CONTACTTYPE_TELEPHONE_MAIN_OFFICE = 6;
+
+	PKI016_CONTACTTYPE_UNDECODABLE_CONTACT_TYPE = 255;
+}
+// The TransportType table lists various modes of transport.
+enum Pki017_TransportType {
+	// Service provider does not know at time of message generation
+	PKI017_TRANSPORTTYPE_UNKNOWN = 0;
+
+	PKI017_TRANSPORTTYPE_PEDESTRIAN = 1;
+
+	PKI017_TRANSPORTTYPE_UNDERGROUND_RAIL = 2;
+
+	PKI017_TRANSPORTTYPE_TRAIN = 3;
+
+	PKI017_TRANSPORTTYPE_BUS = 4;
+
+	PKI017_TRANSPORTTYPE_FERRY = 5;
+
+	PKI017_TRANSPORTTYPE_TRAM = 6;
+
+	PKI017_TRANSPORTTYPE_SHUTTLE = 7;
+
+	PKI017_TRANSPORTTYPE_UNDECODABLE_TRANSPORT_TYPE = 255;
+}
+// The OpeningHoursType table defines the types of a given time value.
+enum Pki018_OpeningHoursType {
+	// Service provider does not know at time of message generation
+	PKI018_OPENINGHOURSTYPE_UNKNOWN = 0;
+
+	PKI018_OPENINGHOURSTYPE_ENTRY_HOURS = 1;
+
+	PKI018_OPENINGHOURSTYPE_EXIT_HOURS = 2;
+
+	PKI018_OPENINGHOURSTYPE_MAXIMUM_STAY_TIME = 3;
+
+	PKI018_OPENINGHOURSTYPE_UNDECODABLE_OPENING_HOURS_TYPE = 255;
+}
+// The TermType table defines for which desired parking duration a parking site may be best suited.
+enum Pki019_TermType {
+	// Service provider does not know at time of message generation
+	PKI019_TERMTYPE_UNKNOWN = 0;
+
+	PKI019_TERMTYPE_SHORT_TERM = 1;
+
+	PKI019_TERMTYPE_LONG_TERM = 2;
+
+	PKI019_TERMTYPE_OVERNIGHT = 3;
+
+	PKI019_TERMTYPE_MEDIUM_TERM = 4;
+
+	PKI019_TERMTYPE_UNDECODABLE_TERM_TYPE = 255;
+}
+// The Advice table allows to encode an advice for users.
+enum Pki020_Advice {
+	// Service provider does not know at time of message generation
+	PKI020_ADVICE_UNKNOWN = 0;
+
+	PKI020_ADVICE_SHUTTLE_SERVICE_IS_AVAILABLE = 1;
+
+	PKI020_ADVICE_USE_PUBLIC_TRANSPORTATION = 2;
+
+	PKI020_ADVICE_USE_PARK_AND_RIDE = 3;
+
+	PKI020_ADVICE_ADMISSION_TICKET_IS_ALSO_VALID_FOR_PUBLIC_TRANSPORT = 4;
+
+	PKI020_ADVICE_NO_PUBLIC_TRANSPORT_AVAILABLE = 5;
+
+	PKI020_ADVICE_EXTRA_PARKING_CAPACITY_AVAILABLE = 6;
+
+	PKI020_ADVICE_UNDECODABLE_ADVICE = 255;
+}
+// The Tendency table allows to indicate the tendency of the fill state.
+enum Pki021_Tendency {
+	// Service provider does not know at time of message generation
+	PKI021_TENDENCY_UNKNOWN = 0;
+
+	PKI021_TENDENCY_FILLING_QUICKLY = 1;
+
+	PKI021_TENDENCY_FILLING = 2;
+
+	PKI021_TENDENCY_FILLING_SLOWLY = 3;
+
+	PKI021_TENDENCY_UNCHANGING = 4;
+
+	PKI021_TENDENCY_EMPTYING_SLOWLY = 5;
+
+	PKI021_TENDENCY_EMPTYING = 6;
+
+	PKI021_TENDENCY_EMPTYING_QUICKLY = 7;
+
+	PKI021_TENDENCY_UNDECODABLE_TENDENCY = 255;
+}
+// The FeeType table lists values that describe the kind of fee.
+enum Pki022_FeeType {
+	// Service provider does not know at time of message generation
+	PKI022_FEETYPE_UNKNOWN = 0;
+
+	PKI022_FEETYPE_MINIMUM = 1;
+
+	PKI022_FEETYPE_MAXIMUM = 2;
+
+	PKI022_FEETYPE_ADDITIONAL = 3;
+
+	PKI022_FEETYPE_SEASON_TICKET = 4;
+
+	PKI022_FEETYPE_TEMPORARY_PRICE = 5;
+
+	PKI022_FEETYPE_NIGHT_PRICE = 6;
+
+	PKI022_FEETYPE_DAY_PRICE = 7;
+
+	PKI022_FEETYPE_MONTH_PRICE = 8;
+
+	PKI022_FEETYPE_YEAR_PRICE = 9;
+
+	PKI022_FEETYPE_FIRST_HOUR_PRICE = 10;
+
+	PKI022_FEETYPE_FREE_PARKING = 11;
+
+	PKI022_FEETYPE_FLAT = 12;
+
+	PKI022_FEETYPE_UNDECODABLE_FEE_TYPE = 255;
+}

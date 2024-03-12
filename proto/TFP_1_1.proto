@@ -1,0 +1,589 @@
+syntax = "proto3";
+
+package tpeg.tfp;
+import "TPEG/TPEGDataTypes_2_1.proto";
+import "TPEG/LRC_3_0.proto";
+import "TPEG/MMC_1_1.proto";
+
+// A 'TFPMessage' component is the top container of a TFP message. It contains all information about a particular part of the network, for example the traffic state for a road segment. 
+// Annotation: just informative here; text for specification to be done in Word
+message TFPMessage {
+
+	MMCSwitch mmt = 100;
+
+	repeated TFPMethod method = 101;
+
+	optional tpeg.lrc.LocationReferencingContainer loc = 102;
+}
+// Traffic conditions are modelled as traffic flow objects. TFP provides three different methods to define such an object, for details see descriptions of components 'FlowPolygonObject', 'FlowStatus' and 'FlowMatrix'. 'TFPMethod' is the generalization of these 3 methods.  
+// Annotation: just informative here; text for specification to be done in Word
+message TFPMethod {
+	// The start of the time period for which the provided content is valid.
+	fixed32 startTime = 1;
+	// The duration [min] of the time period for which the provided content is valid. The period starts at 'startTime' and ends at 'startTime'+'duration'. This attribute shall be used by the 'PolygonFlowObject' component and may be used if required otherwise.
+	optional uint32 duration = 2;
+	oneof TFPMethod_opt {
+		FlowPolygonObject flowPolygonObject = 3;
+		FlowStatus flowStatus = 4;
+		FlowMatrix flowMatrix = 5;
+	}
+}
+// The MMCSwitch component is an abstract component, allowing the flexible use of monolithic or multi-part message management.
+message MMCSwitch {
+	oneof MMCSwitch_opt {
+		tpeg.mmc.MMCMessagePart mMCMessagePart = 1;
+		tpeg.mmc.MessageManagementContainer messageManagementContainer = 2;
+		tpeg.mmc.MMCMasterMessage mMCMasterMessage = 3;
+	}
+}
+// The Flow Polygon method describes the traffic situation within the network by a number of 'FlowPolygonObjects'. Each of these objects defines a spatial and temporal area with critical or congested conditions, whereas the rest of the considered road network is assumed to be in a free-flow state.  
+// Annotation: just informative here; text for specification to be done in Word
+message FlowPolygonObject {
+	// Resolution of the spatial offset used in this structure in steps of 10/50/100/500 metres or TMC-locations. This spatial resolution value shall be used for all spatial offsets in the embedded 'FlowPolygon' components if not overridden there by the corresponding attribute 'spatialResolutionPolygon'. Relative spatial offsets (table entries 5 and 6) shall not be used. The 'start-of-location' spatial offset (table entry 7) shall neither be used.
+	Tfp004_SpatialResolution spatialResolution = 1;
+	// Flow Polygon data.
+	repeated FlowPolygon polygons = 100;
+}
+// A 'FlowPolygon' includes a spatial/temporal area with a consistent traffic flow status.
+message FlowPolygon {
+	// Unique index within related 'FlowPolygonObject'. Used for ordering the FlowPolygons within the 'FlowPolygonObject'
+	uint32 polygonIndex = 1;
+	// Attributes describing the traffic flow status within the polygon
+	StatusParameters status = 2;
+	// Vector with polygon points
+	repeated PolygonPoint polygonPoints = 3;
+	// Resolution of the spatial offset used for this polygon, in steps of 10/50/100/500 metres or TMC-locations. The value of this attribute - if present - overrides for this FlowPolygon the attribute value 'spatialResolution' of the related 'FlowPolygonObject' component. Relative spatial offsets (table entries 5 and 6) shall not be used.
+	optional Tfp004_SpatialResolution spatialResolutionPolygon = 4;
+	// Information on restrictions related to the reported traffic flow
+	optional Restrictions restriction = 5;
+	// Statistical information related to the reported flow status
+	optional StatisticalParameters statistics = 6;
+	// A simple cause for the reported traffic flow status may be added by this attribute; this parameter shall be omitted if a detailed cause is available by an external message (see attribute 'linked cause')
+	optional Tfp006_CauseCode cause = 7;
+	// A detailed cause may be reported by a linked message (e.g. a TEC-message).
+	optional LinkedCause detailedCause = 8;
+}
+// The 'FlowStatus' component includes the information about the traffic flow status at a dedicated location defined by the LRC and for a distinct time interval.   
+// A message may contain more than one 'FlowStatus' component in order to provide information for several vehicle classes or for several time intervals.
+message FlowStatus {
+	// Attributes describing the traffic flow status at the related location
+	StatusParameters status = 1;
+	// Information on restrictions related to the reported traffic flow
+	optional Restrictions restriction = 2;
+	// Statistical information related to the reported flow status
+	optional StatisticalParameters statistics = 3;
+	// A simple cause for the reported traffic flow status may be added by this attribute; this parameter shall be omitted if a detailed cause is available by an external message (see attribute 'linked cause')
+	optional Tfp006_CauseCode cause = 4;
+	// A detailed cause may be reported by a linked message (e.g. a TEC-message)
+	optional LinkedCause detailedCause = 5;
+}
+// The Flow Matrix method describes the traffic situation of the considered road network using temporal and spatial matrices of traffic flow states, such that the overall considered network is covered by the transmitted matrix objects (see figure below):
+// Annotation: text to be done in Word Doc
+message FlowMatrix {
+	// Resolution of the spatial offset used in this structure in steps of 10/50/100/500 metres or TMC-locations. This spatial resolution value shall be used for all spatial offsets in the embedded data objects if not overridden there by the corresponding attributes (i.e. 'spatialResolutionVector' in component 'FlowVector' and 'spatialResolutionSection' in datastructure 'FlowVectorSection'). Relative spatial offsets (table entries 5 and 6) shall not be used for this attribute. The 'start-of-location' spatial offset (table entry 7) shall neither be used for this attribute.
+	Tfp004_SpatialResolution spatialResolution = 1;
+	// Flow Vector data
+	repeated FlowVector vectors = 100;
+}
+// A 'FlowVector' includes traffic flow status information for the road stretch covered by the surrounding Flow Matrix, but only for a dedicated time interval. The 'FlowVector' consists of a number of 'FlowVectorSections' which shall be ordered in the 'vectorSections' attribute in downstream direction i.e. in descending order of the related 'spatialOffset' attributes.
+message FlowVector {
+	// Temporal offset [min] to the 'startTime' of the surrounding 'FlowMatrix' object, defining the end of the related time interval. In case of a current status the begin of the time interval is the 'startTime' of the related 'FlowMatrix' object. In case of a prognosis the begin of the time interval is the end of the previous interval. May be zero for the FlowVector of the current status if there are no further flow vectors with forecast data (0 equals to 'end undefined').
+	uint32 timeOffset = 1;
+	// Flow section data; the 'FlowVectorSections' objects in this attribute shall be ordered in driving direction, i.e. the section with the highest spatial offset first (see also 7.2).
+	repeated FlowVectorSection vectorSections = 2;
+	// Resolution of the spatial offset used for this vector, in steps of 10/50/100/500 metres or TMC-locations. The value of this attribute - if present- overrides for this Flow Vector the attribute 'spatialResolution' of the corresponding 'FlowMatrix' component. Relative spatial offsets (table entries 5 and 6) shall not be used for this attribute. The 'start-of-location' spatial offset (table entry 7) shall neither be used for this attribute.
+	optional Tfp004_SpatialResolution spatialResolutionVector = 3;
+}
+// This component is not used yet. It enables future backward-compatible extensions to the containing 'FlowVectorSection' data structure.
+message SectionExtensionComponent {
+}
+// This component is not used yet. It enables future backward-compatible extensions to the containing 'StatusParameters' data structure.
+message StatusExtensionComponent {
+}
+// This component is not used yet. It enables future backward-compatible extensions to the containing 'Restrictions' data structure.
+message RestrictionExtensionComponent {
+}
+// This component is not used yet. It enables future backward-compatible extensions to the containing 'StatisticalParameters' datastructure.
+message StatisticsExtensionComponent {
+}
+// A 'FlowVectorSection' includes traffic flow status information for a dedicated section of a road stretch.
+message FlowVectorSection {
+	// Start of the section as spatial offset in upstream direction (i.e. opposite to the driving direction) to the end of the road stretch defined by the Location Reference of the message. The end of a section is defined by the start of the following section in downstream (driving) direction. If the section is of type 'entry' (see attribute 'sectionType') the offset defines the point where the entry joins the road. If the section is of type 'exit' the offset defines the point where the exit separates from the road. 
+	// The units used for the offset is signalled by the &lsquo;spatialResolution&lsquo; attribute of the related objects &lsquo;FlowMatrx&rsquo;, &lsquo;FlowVector&rsquo; or &lsquo;FlowVectorSection&rsquo; and may be in TMC locations or metric units, or a default value 1 in case of a 'start-of-location' spatial resolution. 
+	// The determination of the metric spatial offset is defined by the following equation: 
+	//         spatial offset (m) = spatialOffset * spatialResolution (m)
+	uint32 spatialOffset = 1;
+	// Attributes describing the traffic status at this section
+	StatusParameters status = 2;
+	// Resolution of the spatial offset used for this section, in steps of 10/50/100/500 metres, or TMC-locations, or relative offsets in steps of 10/100 metres, or a fixed value 1 for the spatialOffset attribute in case of a 'start-of-location' spatialResolutionSection value. The value of this attribute - if present- overrides for this 'FlowVectorSection' the attributes 'spatialResolution' of the related 'FlowMatrix' component and/or 'spatialResolutionVector' of the related 'FlowVector' component. 
+	// To avoid aggregated inaccuracies, relative offsets should be used only exceptionally, e.g. for precise delimiters of particular sections within a road stretch with TMC location referencing.
+	optional Tfp004_SpatialResolution spatialResolutionSection = 3;
+	// Type of section; shall be used if and only if no normal road section (entry or exit)
+	optional Tfp007_SectionType sectionType = 4;
+	// Information on restrictions related to the reported information
+	optional Restrictions restriction = 5;
+	// Statistical information related to the reported flow status
+	optional StatisticalParameters statistics = 6;
+	// A simple cause for the reported traffic flow status may be added by this attribute; this parameter shall be omitted if a detailed cause is available by an external message (see attribute 'linked cause')
+	optional Tfp006_CauseCode cause = 7;
+	// A detailed cause may be reported by a linked message (e.g. a TEC-message)
+	optional LinkedCause detailedCause = 8;
+	// The extensions component is not used yet but may be used in future TFP versions to add further attributes to this data structure without losing backward-compatibility
+	optional SectionExtensionComponent extensions = 100;
+}
+// A 'PolygonPoint' defines a spatial/temporal point within a 'FlowPolygon'.
+message PolygonPoint {
+	// Position of the 'PolygonPoint' as (absolute) spatial offset to the end of the road stretch defined by the Location Reference of the message in upstream direction. 
+	// The units used for the offset is signalled by the 'spatialResolution' attribute of the related objects 'FlowPolygon' or 'FlowPolygonObject'  and may be in TMC locations or metric units. 
+	// The determination of the metric spatial offset is defined by the following equation: 
+	//         spatial offset (m) = spatialOffset * spatialResolution (m)
+	// Relative spatial offsets (table entries 5 and 6) shall not be used for this attribute.
+	uint32 spatialOffset = 1;
+	// Temporal offset [min] to the 'startTime' of the surrounding 'FlowPolygonObject'.
+	uint32 timeOffset = 2;
+}
+// This datastructure may be used if required to link to a TPEG message with more details about the cause for this traffic status. 
+// A link to another message is uniquely specified by the combination of ServiceID, ContentID,  ApplicationID and messageID.
+message LinkedCause {
+	// The related message ID
+	uint32 messageID = 1;
+	// Content ID of the TPEG service component related to the linked message
+	uint32 COID = 2;
+	// The TPEG service ID related to the service of the linked message; this attribute may be omitted if the linked message is in the same TPEG service like this TFP message.Note that the originator service SID may differ from the carrier service SID (see ISO TS 21219-9).
+	optional tpeg.datatypes.ServiceIdentifier SID = 3;
+	// Application ID of the TPEG service component related to the linked message; the default value is = 5 (TEC) so this attribute may be omitted if the linked message is of this application type
+	optional uint32 AID = 4;
+}
+// This datastructure contains the parameters defining the traffic flow status on the corresponding rod section. The following requirements shall be fulfilled for the StatusParameters:
+//  At least one of the attributes 'LOS', 'averageSpeed' and 'delay' shall be delivered
+//  The 'delay' attribute should be used if the speed on the related road section is near to zero, to avoid inaccurate or infinite travel time calculations
+// In case of a blocked road this shall be indicated by a 'LOS' attribute with value 'no traffic flow' (with or without tendency, tfp003 values 006, 014, 030, 046)
+message StatusParameters {
+	// The 'LOS' (Level-of-Service) attribute indicates the current traffic quality and (optionally) its tendency. 
+	// The LOS level is dependent on the road category; e.g. a average speed of 40km/h may be 'Free Traffic' on a city road and may be 'Queuing Traffic' on a highway.
+	// The tendency shall be the predicted LOS level in the next time period, which starts at startTime + duration of this the current period
+	optional Tfp003_LevelOfService LOS = 1;
+	// The achievable average speed in km/h. This value may differ from the measured average speed on the related road section as it should exclude vehicle classes with inherent speed limitations (e.g. lorries).
+	optional uint32 averageSpeed = 2;
+	// The time in seconds it takes to traverse the affected road segment under free flow traffic conditions.
+	optional uint32 freeFlowTravelTime = 3;
+	// Delay on the road segment in seconds; as this value shall be used only if the average speed is near to 0 m/sec this value equals the overall travel time, i.e. the time it takes to traverse the road segment.
+	optional uint32 delay = 4;
+	// The extensions component is not used yet but may be used in future TFP versions to add further attributes to this data structure without losing backward-compatibility.
+	optional StatusExtensionComponent extensions = 100;
+}
+// The traffic state reported by the element containing the 'Restrictions' is restricted to vehicle types, type of sections, lanes etc. as defined by this 'Restrictions' datastructure.
+message Restrictions {
+	// The purpose of the vehicle class attribute is to be able to supply traffic flow and prediction values for particular types of vehicles rather than describe a particular vehicle itself. The attribute indicates that the status conveyed in the current TFP object only concerns a specific type of vehicle.
+	optional Tfp001_VehicleClass vehicleClassAssignment = 1;
+	// Where special restrictions or access conditions apply for a particular type of vehicle then these credentials can be indicated by this element.
+	optional Tfp002_VehicleCredentials vehicleCredentials = 2;
+	// Assignment to lanes for which the reported traffic status is valid
+	optional Tfp005_LaneRestriction lanes = 3;
+	// Angle of an entry/exit to the road stretch in 360/255 degree steps clockwise to the direction of the road stretch at the entry/exit point. Only required to differentiate between several entries/exits if more than one exit/entry is going in/out at the same point on the road, so no exact angle values are required.
+	// If an entry/exit can't be referenced unambiguously in this way, an extra TFP message with a dedicated location reference (e.g. DLR1 reference) for this entry/exit should be used.
+	optional uint32 angle = 4;
+	// Length affected in 10 meter steps. This parameter may be used for sections of type 'entry' or 'exit' to restrict the traffic flow to parts of the related section. In case of an entry, the length determines the start of the section, in case of an exit it determines the end of the section. 
+	// In case of a section on the road stretch this parameter shall not be used cause the section length is determined by the 'spatialOffset' attribute of the following section or the end of the Location Reference.
+	optional uint32 length = 5;
+	// The extensions component is not used yet but may be used in future TFP versions to add further attributes to this data structure without losing backward-compatibility.
+	optional RestrictionExtensionComponent extensions = 100;
+}
+// This datastructure contains statistical parameters and quality indicators of the corresponding status flow parameters.
+message StatisticalParameters {
+	// The risk [%] that a congestion (LOS level 'stationary traffic' or 'blocked') will occur at this road section. This value shall be in range 0..100.
+	optional uint32 congestionProbability = 1;
+	// Used to determine the risk that the travel time may exceed the expected travel time considerably.The value is delivered in 1/10 percentages. A low value is equal to a high probability that the transmitted 'averageSpeed' is reliable.
+	//  
+	// In detail, the attribute 'T90relative' is used to determine a Travel Time value T90 where 90% of the measured travel times on the affected road section are below T90. In other words, a driver can rely on with 90% probability that his travel time will not exceed T90. The determination of T90 shall be done by the following approach: 
+	//  
+	// The average travel time Tav at the affected road section is determined by:  Tav = section-length [m] / averageSpeed [m/sec] 
+	// The T90 value is computed by:  T90 = Tav * T90relative
+	optional uint32 T90relative = 2;
+	// Expresses the accuracy of the data source(s) used for the determination of the traffic status, e.g. accurate measurement data will have a higher quality level than estimations made from video surveys.
+	optional Tfp008_FlowDataQuality FlowQuality = 3;
+	// This parameter may be used to link to a LOS prediction pattern. The service provider is responsible for exact definitions of these patterns.
+	optional uint32 prediction = 4;
+	// The extensions component is not used yet but may be used in future TFP versions to add further attributes to this data structure without losing backward-compatibility.
+	optional StatisticsExtensionComponent extensions = 100;
+}
+// The VehicleClass table lists vehicle classes relevant to filtering congestion and travel time messages.
+enum Tfp001_VehicleClass {
+
+	TFP001_VEHICLECLASS_UNKNOWN = 0;
+
+	TFP001_VEHICLECLASS_CAR = 1;
+
+	TFP001_VEHICLECLASS_LORRY = 2;
+
+	TFP001_VEHICLECLASS_LIGHT_GOODS_VEHICLE = 3;
+
+	TFP001_VEHICLECLASS_HEAVY_GOODS_VEHICLE = 4;
+
+	TFP001_VEHICLECLASS_BUS = 5;
+
+	TFP001_VEHICLECLASS_TRANSPORT_OF_ABNORMAL_LOAD = 6;
+
+	TFP001_VEHICLECLASS_EMERGENCY_VEHICLE = 7;
+
+	TFP001_VEHICLECLASS_WORKS_VEHICLE = 8;
+
+	TFP001_VEHICLECLASS_EXCEPTIONAL_SIZE_VEHICLE = 9;
+
+	TFP001_VEHICLECLASS_TRAILER = 10;
+
+	TFP001_VEHICLECLASS_MILITARY_VEHICLE = 11;
+
+	TFP001_VEHICLECLASS_MOTORCYCLE = 12;
+
+	TFP001_VEHICLECLASS_TAXI = 13;
+
+	TFP001_VEHICLECLASS_TRANSPORT_OF_DANGEROUS_GOODS = 14;
+
+	TFP001_VEHICLECLASS_UNMOTORISED_VEHICLE = 15;
+
+	TFP001_VEHICLECLASS_MOTORISED_VEHICLE = 16;
+}
+// Some special conditions may apply to vehicles with special credentials, the VehicleCredentials table lists those credentials.
+enum Tfp002_VehicleCredentials {
+
+	TFP002_VEHICLECREDENTIALS_UNKNOWN = 0;
+
+	TFP002_VEHICLECREDENTIALS_HIGH_OCCUPANCY = 1;
+
+	TFP002_VEHICLECREDENTIALS_DISABLED_PASSENGER = 2;
+
+	TFP002_VEHICLECREDENTIALS_PAID_PRIVILEGES = 3;
+}
+// The LevelOfService table lists the level of service and its tendency.
+enum Tfp003_LevelOfService {
+	// Traffic status unknown, Tendency: unknown or no information
+	TFP003_LEVELOFSERVICE_UNKNOWN = 0;
+	// Free flowing traffic, the traffic is not disturbed, Tendency: unknown or no information
+	TFP003_LEVELOFSERVICE_FREE_TRAFFIC = 1;
+	// Heavy traffic causing minor problems in the traffic, Tendency: unknown or no information
+	TFP003_LEVELOFSERVICE_HEAVY_TRAFFIC = 2;
+	// Slow moving traffic, Tendency: unknown or no information
+	TFP003_LEVELOFSERVICE_SLOW_TRAFFIC = 3;
+	// The traffic is in queues but still moves slowly, Tendency: unknown or no information
+	TFP003_LEVELOFSERVICE__QUEUING_TRAFFIC = 4;
+	// Stationary traffic, congestion, Tendency: unknown or no information
+	TFP003_LEVELOFSERVICE_STATIONARY_TRAFFIC = 5;
+	// No traffic flow due to blockage or closure, Tendency: unknown or no information
+	TFP003_LEVELOFSERVICE_NO_TRAFFIC_FLOW = 6;
+	// Current status: free traffic flow, Tendency: free traffic flow
+	TFP003_LEVELOFSERVICE_FREE_TRAFFIC_CONSTANT = 9;
+	// Current status:heavy traffic, Tendency: heavy traffic
+	TFP003_LEVELOFSERVICE_HEAVY_TRAFFIC_CONSTANT = 10;
+	// Current status:slow traffic, Tendency: slow traffic
+	TFP003_LEVELOFSERVICE_SLOW_TRAFFIC_CONSTANT = 11;
+	// Current status:queuing traffic, Tendency: queuing traffic
+	TFP003_LEVELOFSERVICE_QUEUING_TRAFFIC_CONSTANT = 12;
+	// Current status:stationary traffic, Tendency: stationary traffic
+	TFP003_LEVELOFSERVICE_STATIONARY_TRAFFIC_CONSTANT = 13;
+	// Current status:no traffic flow Tendency: no traffic flow
+	TFP003_LEVELOFSERVICE_NO_TRAFFIC_FLOW_CONSTANT = 14;
+	// Current status: free traffic flow, Tendency: heavy traffic
+	TFP003_LEVELOFSERVICE_FREE_TRAFFIC_INCREASING = 17;
+	// Current status:heavy traffic, Tendency: slow traffic
+	TFP003_LEVELOFSERVICE_HEAVY_TRAFFIC_INCREASING = 18;
+	// Current status:slow traffic, Tendency: queuing traffic
+	TFP003_LEVELOFSERVICE_SLOW_TRAFFIC_INCREASING = 19;
+	// Current status:queuing traffic, Tendency: stationary traffic
+	TFP003_LEVELOFSERVICE_QUEUING_TRAFFIC_INCREASING = 20;
+	// Current status:heavy traffic, Tendency: free traffic flow
+	TFP003_LEVELOFSERVICE_HEAVY_TRAFFIC_DECREASING = 26;
+	// Current status:slow traffic, Tendency: heavy traffic
+	TFP003_LEVELOFSERVICE_SLOW_TRAFFIC_DECREASING = 27;
+	// Current status:queuing traffic, Tendency: slow traffic
+	TFP003_LEVELOFSERVICE_QUEUING_TRAFFIC_DECREASING = 28;
+	// Current status:stationary traffic, Tendency: queuing traffic
+	TFP003_LEVELOFSERVICE_STATIONARY_TRAFFIC_DECREASING = 29;
+	// Current status:no traffic flow, Tendency: queuing traffic
+	TFP003_LEVELOFSERVICE_NO_TRAFFIC_FLOW_DECREASING = 30;
+	// Current status: free traffic flow, Tendency: slow traffic
+	TFP003_LEVELOFSERVICE_FREE_TRAFFIC_RAPIDLY_INCREASING = 33;
+	// Current status:heavy traffic, Tendency: queuing traffic
+	TFP003_LEVELOFSERVICE_HEAVY_TRAFFIC_RAPIDLY_INCREASING = 34;
+	// Current status:slow traffic, Tendency: stationary traffic
+	TFP003_LEVELOFSERVICE_SLOW_TRAFFIC_RAPIDLY_INCREASING = 35;
+	// Current status:slow traffic, Tendency: free traffic flow
+	TFP003_LEVELOFSERVICE_SLOW_TRAFFIC_RAPIDLY_DECREASING = 43;
+	// Current status:queuing traffic, Tendency: heavy traffic
+	TFP003_LEVELOFSERVICE_QUEUING_TRAFFIC_RAPIDLY_DECREASING = 44;
+	// Current status:stationary traffic, Tendency: slow traffic
+	TFP003_LEVELOFSERVICE_STATIONARY_TRAFFIC_RAPIDLY_DECREASING = 45;
+	// Current status:no traffic flow Tendency: slow traffic
+	TFP003_LEVELOFSERVICE_NO_TRAFFIC_FLOW_RAPIDLY_DECREASING = 46;
+}
+
+enum Tfp004_SpatialResolution {
+	// Resolution of related offset value is in TMC locations (extents); this type shall be used only if the LRC container is a TMC location
+	TFP004_SPATIALRESOLUTION_TMCLOCATIONS = 0;
+	// resolution of related offset is in 10-Meter steps as absolute offsets to the spatial reference point, offset = value*10 [m]
+	TFP004_SPATIALRESOLUTION_10_METER_RESOLUTION = 1;
+	// resolution of related offset is in 50-Meter steps as absolute offsets to the spatial reference point, offset = value*50 [m]
+	TFP004_SPATIALRESOLUTION_50_METER_RESOLUTION = 2;
+	// resolution of related offset is in 100-Meter steps as absolute offsets to the spatial reference point, offset = value*100 [m]
+	TFP004_SPATIALRESOLUTION_100M_RESOLUTION = 3;
+	// resolution of related offset is in 500-Meter steps as absolute offsets to the spatial reference point, offset = value*500 [m]
+	TFP004_SPATIALRESOLUTION_500M_RESOLUTION = 4;
+	// spatial offset is delivered in 10m steps upstream to the begin of the following section; this value may be used only by the spatialResolutionSection of the 'flowVectorSection' datastructure; it shall not be used by other TFP attributes; offset = value*10 [m]
+	TFP004_SPATIALRESOLUTION_RELATIVE_10_METER_RESOLUTION = 5;
+	// spatial offset is delivered in 100m steps upstream to the begin of the following section; this value may be used only by the spatialResolutionSection of the 'flowVectorSection' datastructure; it shall not be used by other TFP attributes; offset = value*100 [m]
+	TFP004_SPATIALRESOLUTION_RELATIVE_100_METER_RESOLUTION = 6;
+	// spatial offset is the start of the location as resolved on the client digital roadmap.  The associated offset value shall be set to 1. This tfp004:spatialResolution value may be used only by the spatialResolutionSection of the 'flowVectorSection' datastructure; it shall not be used by other TFP attributes; offset = 1 (default fixed value).
+	TFP004_SPATIALRESOLUTION_START_OF_LOCATION = 7;
+}
+// Lanes for lane restrictions are ordered from right to left, i.e. lane 1 is the right-most driving lane, lane 8 is the left-most driving lane. This order is independent from the country-related driving direction (left-hand or right hand traffic).
+enum Tfp005_LaneRestriction {
+
+	TFP005_LANERESTRICTION_UNKNOWN = 0;
+	// the right-most driving lane
+	TFP005_LANERESTRICTION_DRIVING_LANE_1 = 1;
+
+	TFP005_LANERESTRICTION_DRIVING_LANE_2 = 2;
+
+	TFP005_LANERESTRICTION_DRIVING_LANE_3 = 3;
+
+	TFP005_LANERESTRICTION_DRIVING_LANE_4 = 4;
+
+	TFP005_LANERESTRICTION_DRIVING_LANE_5 = 5;
+
+	TFP005_LANERESTRICTION_DRIVING_LANE_6 = 6;
+
+	TFP005_LANERESTRICTION_DRIVING_LANE_7 = 7;
+	// the left-most driving lane
+	TFP005_LANERESTRICTION_DRIVING_LANE_8 = 8;
+
+	TFP005_LANERESTRICTION_DRIVING_LANES_1_AND_2 = 9;
+
+	TFP005_LANERESTRICTION_DRIVING_LANES_2_AND_3 = 10;
+
+	TFP005_LANERESTRICTION_DRIVING_LANES_3_AND_4 = 11;
+
+	TFP005_LANERESTRICTION_DRIVING_LANES_4_AND_5 = 12;
+
+	TFP005_LANERESTRICTION_DRIVING_LANES_5_AND_6 = 13;
+
+	TFP005_LANERESTRICTION_DRIVING_LANES_6_AND_7 = 14;
+
+	TFP005_LANERESTRICTION_DRIVING_LANES_7_AND_8 = 15;
+
+	TFP005_LANERESTRICTION_DRIVING_LANES_1_2_AND_3 = 16;
+
+	TFP005_LANERESTRICTION_DRIVING_LANES_2_3_AND_4 = 17;
+
+	TFP005_LANERESTRICTION_DRIVING_LANES_3_4_AND_5 = 18;
+
+	TFP005_LANERESTRICTION_DRIVING_LANES_4_5_AND_6 = 19;
+
+	TFP005_LANERESTRICTION_DRIVING_LANES_5_6_AND_7 = 20;
+
+	TFP005_LANERESTRICTION_DRIVING_LANES_6_7_AND_8 = 21;
+
+	TFP005_LANERESTRICTION_DRIVING_LANES_1_2_3_AND_4 = 22;
+
+	TFP005_LANERESTRICTION_DRIVING_LANES_2_3_4_AND_5 = 23;
+
+	TFP005_LANERESTRICTION_DRIVING_LANES_3_4_5_AND_6 = 24;
+
+	TFP005_LANERESTRICTION_DRIVING_LANES_4_5_6_AND_7 = 25;
+
+	TFP005_LANERESTRICTION_DRIVING_LANES_5_6_7_AND_8 = 26;
+
+	TFP005_LANERESTRICTION_DRIVING_LANES_1_2_3_4_AND_5 = 27;
+
+	TFP005_LANERESTRICTION_DRIVING_LANES_2_3_4_5_AND_6 = 28;
+
+	TFP005_LANERESTRICTION_DRIVING_LANES_3_4_5_6_AND_7 = 29;
+
+	TFP005_LANERESTRICTION_DRIVING_LANES_4_5_6_7_AND_8 = 30;
+
+	TFP005_LANERESTRICTION_DRIVING_LANES_1_2_3_4_5_AND_6 = 31;
+
+	TFP005_LANERESTRICTION_DRIVING_LANES_2_3_4_5_6_AND_7 = 32;
+
+	TFP005_LANERESTRICTION_DRIVING_LANES_3_4_5_6_7_AND_8 = 33;
+
+	TFP005_LANERESTRICTION_DRIVING_LANES_1_2_3_4_5_6_AND_7 = 34;
+
+	TFP005_LANERESTRICTION_DRIVING_LANES_2_3_4_5_6_7_AND_8 = 35;
+
+	TFP005_LANERESTRICTION_ALL_DRIVING_LANES = 37;
+	// the hard shoulder, may be left or right dependent on country (right hand or left hand traffic)
+	TFP005_LANERESTRICTION_HARD_SHOULDER = 39;
+}
+// A simple cause code to indicate the cause of the traffic congestion.
+enum Tfp006_CauseCode {
+
+	TFP006_CAUSECODE_UNKNOWN = 0;
+	// In case that the capacity of that part of the street causes this traffic state.
+	TFP006_CAUSECODE_TRAFFIC_CONGESTION = 1;
+	// In case of an accident
+	TFP006_CAUSECODE_ACCIDENT = 2;
+	// In case that road works are the reason.
+	TFP006_CAUSECODE_ROADWORKS = 3;
+	// In case of lanes being smaller as typical for the given country.
+	TFP006_CAUSECODE_NARROW_LANES = 4;
+	// In case that in general the given part of a road is impassible.
+	TFP006_CAUSECODE_IMPASSABILITY = 5;
+	// In case that a slippery road is the reason.
+	TFP006_CAUSECODE_SLIPPERY_ROAD = 6;
+	// In case that big areas of water are on the road surface.
+	TFP006_CAUSECODE_AQUAPLANING = 7;
+	// In case that a traffic affecting fire is the reason.
+	TFP006_CAUSECODE_FIRE = 8;
+	// In case that natural conditions require high caution by the driver. The reason is mostly expected to appear suddenly.
+	TFP006_CAUSECODE_HAZARDOUS_DRIVING_CONDITIONS = 9;
+	// In case that objects impede the drive.
+	TFP006_CAUSECODE_OBJECTS_ON_THE_ROAD = 10;
+	// In case that animals are on the carriage way.
+	TFP006_CAUSECODE_ANIMALS_ON_ROADWAY = 11;
+	// In case that people are walking on the carriage way.
+	TFP006_CAUSECODE_PEOPLE_ON_ROADWAY = 12;
+	// In case that a broken down vehicle is present on the carriage way.
+	TFP006_CAUSECODE_BROKEN_DOWN_VEHICLES = 13;
+	// In case that cars are driving against the one way direction of the carriage way. (not standing)
+	TFP006_CAUSECODE_VEHICLE_ON_WRONG_CARRIAGEWAY_GHOSTDRIVER = 14;
+	// In case that rescue and recovery work is in progress.
+	TFP006_CAUSECODE_RESCUE_AND_RECOVERY_WORK_IN_PROGRESS = 15;
+	// In case that a regulatory measure is the reason.
+	TFP006_CAUSECODE_REGULATORY_MEASURE = 16;
+	// In case that extreme weather conditions are the reason.
+	TFP006_CAUSECODE_EXTREME_WEATHER_CONDITIONS = 17;
+	// In case the reduced visibility needs a speed adaptation.
+	TFP006_CAUSECODE_VISIBILITY_REDUCED = 18;
+	// In case that increased precipitation is the reason. This cause is mostly combined with time delays.
+	TFP006_CAUSECODE_PRECIPITATION = 19;
+	// In case that reckless persons are the reason.
+	TFP006_CAUSECODE_RECKLESS_PERSONS = 20;
+	// In case that an overheight warning system trigger is the reason for e.g. the closure.
+	TFP006_CAUSECODE_OVERHEIGHT_WARNING_SYSTEM_TRIGGERED = 21;
+	// In case that changed traffic regulations and therefore high risk of accident are the reason.
+	TFP006_CAUSECODE_TRAFFIC_REGULATIONS_CHANGED = 22;
+	// In case that a major event is the reason.
+	TFP006_CAUSECODE_MAJOR_EVENT = 23;
+	// In case that a transport service is not operating.
+	TFP006_CAUSECODE_SERVICE_NOT_OPERATING = 24;
+	// In case that a service is not usable although it is operating (e.g. overcrowded or paused)
+	TFP006_CAUSECODE_SERVICE_NOT_USEABLE = 25;
+	// In case that slow moving vehicles are the reason.
+	TFP006_CAUSECODE_SLOW_MOVING_VEHICLES = 26;
+	// In case that a dangerous end of queue could cause an accident.
+	TFP006_CAUSECODE_DANGEROUS_END_OF_QUEUE = 27;
+	// In case that a risk of fire exists. Open fire or glow should be extinguished.
+	TFP006_CAUSECODE_RISK_OF_FIRE = 28;
+	// In case that a time delay exists.
+	TFP006_CAUSECODE_TIME_DELAY = 29;
+	// In case that there is a spot for checking purposes
+	TFP006_CAUSECODE_POLICE_CHECKPOINT = 30;
+	// In case that a malfunctioning roadside equipment is the reason.
+	TFP006_CAUSECODE_MALFUNCTIONING_ROADSIDE_EQUIPMENT = 31;
+	// In case of a serious accident with expected long lasting rescue and recovery work
+	TFP006_CAUSECODE_SERIOUS_ACCIDENT = 32;
+	// In case of an earlier accident.
+	TFP006_CAUSECODE_EARLIER_ACCIDENT = 33;
+	// In case of an reported accident
+	TFP006_CAUSECODE_ACCIDENT_REPORTED = 34;
+	// In case of an accident investigation in progress
+	TFP006_CAUSECODE_ACCIDENT_INVESTIGATION_WORK = 35;
+	// In case that many vehicles are involved in the accident
+	TFP006_CAUSECODE_MULTI_VEHICLE_ACCIDENT = 36;
+	// In case of an accident involving a lorry.
+	TFP006_CAUSECODE_ACCIDENT_INVOLVING_LORRY = 37;
+	// In case of an accident where traffic is directed around the accident area
+	TFP006_CAUSECODE_ACCIDENT_TRAFFIC_BEING_DIRECTED_AROUND = 38;
+	// In case that long-term road works are the reason.
+	TFP006_CAUSECODE_LONG_TERM_ROAD_WORKS = 39;
+	// In case that road construction work is the reason
+	TFP006_CAUSECODE_CONSTRUCTION_WORK = 40;
+	// In case that bridge maintenance work is the reason
+	TFP006_CAUSECODE_BRIDGE_MAINTENANCE_WORK = 41;
+	// In case that road resurfacing work is the reason
+	TFP006_CAUSECODE_RESURFACING_WORK = 42;
+	// In case that major road works are the reason.
+	TFP006_CAUSECODE_MAJOR_ROAD_WORKS = 43;
+	// In case that road maintenance work is the reason
+	TFP006_CAUSECODE_ROAD_MAINTENANCE_WORK = 44;
+	// In case that road works during the night are the reason.
+	TFP006_CAUSECODE_ROAD_WORKS_DURING_NIGHT = 45;
+	// In case of road works where traffic is alternately directed over one single lane.
+	TFP006_CAUSECODE__ROAD_WORKS_WITH_SINGLE_LINE_TRAFFIC_ALTERNATE_DIRECTIONS = 46;
+	// In case that flooding water is reason for impassability.
+	TFP006_CAUSECODE_FLOODING = 47;
+	// In case that a slippery road is caused by snow on the road.
+	TFP006_CAUSECODE_SNOW_ON_ROAD = 48;
+	// In case that a slippery road is caused by ice on the road.
+	TFP006_CAUSECODE_ICE_ON_ROAD = 49;
+	// In case that a slippery road is caused by black ice on the road.
+	TFP006_CAUSECODE_BLACK_ICE_ON_ROAD = 50;
+	// In case that a grass fire is the reason.
+	TFP006_CAUSECODE_GRASS_FIRE = 51;
+	// In case that a forest fire is the reason.
+	TFP006_CAUSECODE_FOREST_FIRE = 52;
+	// In case that the vehicle lying on the road is overturned
+	TFP006_CAUSECODE_OVERTURNED_VEHICLE = 53;
+	// In case that a broken down lorry lies on the carriageway
+	TFP006_CAUSECODE_BROKEN_DOWN_LORRY = 54;
+	// In case that a vehicle spun around lies on the carriageway
+	TFP006_CAUSECODE_VEHICLE_SPUN_AROUND = 55;
+	// In case that the car on the road is burning, on fire.
+	TFP006_CAUSECODE_VEHICLE_ON_FIRE = 56;
+	// In case that gusty winds, especially cross winds, are the reason.
+	TFP006_CAUSECODE_GUSTY_WINDS = 57;
+	// In case that strong winds, especially cross winds, are the reason.
+	TFP006_CAUSECODE_STRONG_WINDS = 58;
+	// In case that a strong thunderstorm affects driving.
+	TFP006_CAUSECODE_THUNDERSTORM = 59;
+	// In case that the visibility is reduced by fog.
+	TFP006_CAUSECODE_VISIBILITY_REDUCED_DUE_TO_FOG = 60;
+	// In case that the visibility is reduced by low sun glare.
+	TFP006_CAUSECODE_VISIBILITY_REDUCED_DUE_TO_LOW_SUN_GLARE = 61;
+	// In case that snowfall is the reason
+	TFP006_CAUSECODE_SNOW = 62;
+	// In case that rain is the reason
+	TFP006_CAUSECODE_RAIN = 63;
+	// In case that hail is the reason
+	TFP006_CAUSECODE_HAIL = 64;
+	// In case that a sports event is the reason.
+	TFP006_CAUSECODE_SPORTS_EVENT = 65;
+	// In case that traffic control signals are not functioning at all.
+	TFP006_CAUSECODE_TRAFFIC_CONTROL_SIGNALS_NOT_WORKING = 66;
+	// In case that traffic control signals are malfunctioning.
+	TFP006_CAUSECODE_TRAFFIC_CONTROL_SIGNALS_WORKING_INCORRECTLY = 67;
+	// In case that a vlosure is the reason.
+	TFP006_CAUSECODE_CLOSURE = 68;
+}
+
+enum Tfp007_SectionType {
+
+	TFP007_SECTIONTYPE_UNKNOWN = 0;
+	// Section affected is an entry
+	TFP007_SECTIONTYPE_ENTRY = 1;
+	// Section affected is an exit
+	TFP007_SECTIONTYPE_EXIT = 2;
+}
+
+enum Tfp008_FlowDataQuality {
+
+	TFP008_FLOWDATAQUALITY_UNKNOWN = 0;
+	// Very low quality of the delivered information, 
+	// Proposed to use map database instead, if possible
+	TFP008_FLOWDATAQUALITY_VERY_LOW = 1;
+	// Low quality of the delivered information, 
+	// expected not to be better than a historic measurements database (e.g. in navigation map)
+	TFP008_FLOWDATAQUALITY_LOW = 2;
+	// Quality of the delivered information is on a moderate level,
+	// proposed to rely partly on the information of this flow status and add other data sources if possible
+	TFP008_FLOWDATAQUALITY_MODERATE = 3;
+	// Sufficient quality of the delivered information,
+	// proposed to rely mainly on the information of this flow status
+	TFP008_FLOWDATAQUALITY_SUFFICIENT = 4;
+	// High quality of the delivered information e.g. basing on accurate measurements,
+	// proposed to rely nearly exclusively on the information of this flow value
+	TFP008_FLOWDATAQUALITY_HIGH = 5;
+	// Very high quality of the delivered information e.g. based on accurate and up-to-date measurements,
+	// proposed to 100% rely on the information of this flow status
+	TFP008_FLOWDATAQUALITY_VERY_HIGH = 6;
+}

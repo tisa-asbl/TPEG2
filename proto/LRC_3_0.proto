@@ -1,0 +1,49 @@
+syntax = "proto3";
+
+package tpeg.lrc;
+import "TPEG/GLR_2_1.proto";
+import "TPEG/ETL_1_0.proto";
+import "TPEG/TPEGDataTypes_2_1.proto";
+import "TPEG/TLR_2_0.proto";
+import "TPEG/OLR_1_1.proto";
+
+// The generic LocationReferencingContainer can contain a pre-coded or a dynamic location reference.
+// One or more location referencing method, e.g. TPEG Location, DLR1 Location, TMC Location, VICS Link Location, Korean Node Link Location, ETL Location or GLR Location, can be used to describe one physical location. Any particular method shall be used only once in any LocationReferencingContainer.
+message LocationReferencingContainer {
+
+	repeated Method method = 200;
+}
+// This component is a placeholder for the actual location reference containers.
+// Any particular method shall be used once in any LocationReferencingContainer.
+message Method {
+	oneof Method_opt {
+		UniversalLocationReference universalLocationReference = 1;
+		tpeg.glr.GeographicLocationReference geographicLocationReference = 2;
+		DLR1LocationReference dLR1LocationReference = 3;
+		tpeg.etl.ExtendedTMCLocationReference extendedTMCLocationReference = 4;
+		VICSLinkReferenceLink vICSLinkReferenceLink = 5;
+		KoreanNodeLinkLocationReferenceLink koreanNodeLinkLocationReferenceLink = 6;
+		tpeg.olr.OpenLRLocationReference openLRLocationReference = 7;
+		tpeg.tlr.TMCLocationReference tMCLocationReference = 8;
+		NDSLocationReference nDSLocationReference = 9;
+	}
+}
+// The DLR1 location referencing method is a dynamic location referencing method developed by ISO TC204.
+// The method is designed to provide compact location references that allow accurate location referencing for 100% of the road network. DLR1 location references are machine readable and are primarily aimed at dynamic route guidance navigation Fcstems. The DLR1 method and the TPEG2 conformant structure of TPEG2-DLR are specified in ISO 17572-3.
+message DLR1LocationReference {
+}
+// This element is defined by ISO 17572-2. 
+// The content of this component is defined in another specification. The purpose of this class definition is to assign a unique identifier to the component.
+message KoreanNodeLinkLocationReferenceLink {
+}
+// VICS Link Location is a pre-coded location referencing method designed for the Japan road network. The VICS Link Location reference method is further described in ISO 17572-2.
+message VICSLinkReferenceLink {
+}
+// The ULR location referencing method is a dynamic location referencing method (Universal Location Referencing) which aims to overcome the limits of TPEG-LOC (in terms of efficiency and accuracy) based on an open, royalty-free method. ULR offers a flexible method to fulfil needs of content providers and users in relevant domains. It aims to be really &ldquo;universal&rdquo;, designed for human centred assistance-devices as well as map-related devices like navigation systems. Therefore it supports human-understandable representations such as text as well as machine-processable coding for the map-matching process on on-board digital maps. The ULR method is specified inTISA specification SP13008.
+message UniversalLocationReference {
+}
+// This component defines the NDS Location Reference for referencing locations based on NDS maps (see www.nds-association.org). The component structure of this NDS Location Reference follows the TPEG component structure, yet it contains as binary data an Link Location Reference in NDS format.
+message NDSLocationReference {
+	// Link Location Reference specified by the NDS association Open NDS Service Interface specification (see specification NDS2.X_ONSI-LLR). This Link Location Reference is carried in TPEG as binary data.
+	bytes onsiLLR = 1;
+}

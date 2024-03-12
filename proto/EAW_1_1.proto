@@ -1,0 +1,1479 @@
+syntax = "proto3";
+
+package tpeg.eaw;
+import "TPEG/TPEGDataTypes_2_1.proto";
+import "TPEG/MMC_1_1.proto";
+import "TPEG/LRC_3_0.proto";
+
+// This component is the top level Emergency Alerts and Warnings TPEG message.
+message EAWMessage {
+	// The Message Management container.
+	tpeg.mmc.MessageManagementContainer mmc = 100;
+	// This component contains the Emergency Alerts and Warnings application specific content.
+	optional AlertInformation alertInfo = 101;
+	// The location reference containing the geographic relevance area of the Emergency Alert or Warning. Travelers within this information area should be informed, but when still outside the affected area(s) are not (yet) directly affected by the Alert or Warning.
+	optional tpeg.lrc.LocationReferencingContainer informationArea = 102;
+}
+// The AlertInformation component contains the Emergency Alerts and Warnings application specific content.
+message AlertInformation {
+	// The level, or significance, of the alerting message, in terms of user relevant terms, e.g. alerting colour codes for weather, or indicating whether it is an exercise or test message.
+	Eaw001_EawAlertLevel alertLevel = 1;
+	// The category or categories of the subject event of the alert message.
+	repeated Eaw002_CapCategory category = 2;
+	// The urgency of the subject event of the alert message.
+	Eaw003_CapUrgency urgency = 3;
+	// The severity of the subject event of the alert message.
+	Eaw004_CapSeverity severity = 4;
+	// The certainty of the subject event of the alert message.
+	Eaw005_CapCertainty certainty = 5;
+	// Timing related information for the alert message.
+	CapTimeInfo alertTimeInfo = 6;
+	// Indication for the user of  the status of the alert message. This status allows for a differentiation of technical updates and user relevant updates. The User relevant status may be signalled by the receiver.
+	optional Eaw006_EawUserStatus alertUserStatus = 7;
+	// The type of action recommended for the target audience.
+	repeated Eaw007_CapResponse responseType = 8;
+	// Hierarchical code specifying the event type of the alert message, plus a more specific event sub type code if applicable.
+	repeated EawEventType alertEvent = 9;
+	// Hierarchical code specifying the instruction type of the alert message, plus a more specific instruction sub type code if applicable.
+	repeated EawInstructionType alertInstruction = 10;
+	// Language-specific human-readable text providing information on the event, its impact, instructions, together with a link to a web page, and contact information as applicable.
+	repeated LocalisedAlertTextInfo alertTextInfo = 100;
+	// The area or areas where persons are affected by the alert or warning and should follow the instructions, e.g., to evacuate. Note that this areas may be larger than the area of the subject event itself.
+	repeated tpeg.lrc.LocationReferencingContainer affectedArea = 101;
+	// Additional parameters further detailing the Alert Information.
+	repeated AlertInfoParameters alertParameters = 102;
+	// Link to further resources for information on this event.
+	repeated Resource resource = 103;
+	// Cross-reference information pointing out related TPEG messages and/or originator source content as applicable.
+	optional CrossLinkage crossLinkage = 104;
+}
+// This component contains the (language-dependent) text information as contained in the CAP Alert Info block. In this component, the CAP Alert Info texts can be one-to-one provided, with for each of the languages supported in the CAP Alert message,  or specific audiences targeted.
+message LocalisedAlertTextInfo {
+	// Specifies the relevant local language as RFC 3066 code in which language the Alert text elements are described for display to the user.
+	string rfc3066LlanguageCode = 1;
+	// The text denoting the type of the subject event of the alert message.
+	optional string eventText = 2;
+	// The text describing the intended audience of the alert message.
+	optional string audience = 3;
+	// Human-readable name of the agency or authority issuing this alert.
+	optional string senderName = 4;
+	// A brief human-readable headline of the alert message.
+	optional string headLine = 5;
+	// An extended human-readable description of the hazard or event that occasioned this alert message.
+	optional string description = 6;
+	// The text describing the recommended action to be taken by recipients of the alert message.
+	optional string instruction = 7;
+	// The identifier of the hyperlink associating additional information with the alert message.
+	optional AnyURI web = 8;
+	// The text describing the contact for follow-up and confirmation of the alert message.
+	optional string contact = 9;
+}
+// Component to relay additional parameters to further detail the message content.
+message AlertInfoParameters {
+	// Profile specification identifier to indicate the profile which originated the parameter definitions of the profileParameters
+	optional string profile = 1;
+	// Extension parameters defined within the specified profile to provide additional, profile specific, or possibly service specific parameters.
+	repeated Parameter profileParameter = 2;
+}
+// The Resource component refers to an additional file with supplemental information related to this AlertInformation; e.g., an image or audio file.
+message Resource {
+	// The text describing the type and content of the resource file.
+	repeated tpeg.datatypes.LocalisedShortString resourceDesc = 1;
+	// MIME content type and sub-type as described in IETF RFC 2046.
+	string mimeType = 2;
+	// Approximate size of the resource file in bytes.
+	optional uint32 size = 3;
+	// A full absolute URI, typically a Uniform Resource Locator that can be used to retrieve the resource over the Internet
+	// OR 
+	// a relative URI to name the content of a derefURI attribute if one is present in this resource block.
+	optional AnyURI uri = 4;
+	// Binary data content of the resource file.
+	optional bytes derefURI = 5;
+	// Digest value calculated using the Secure Hash Algorithm (SHA-1), see FIPS PUB 180-4.
+	optional bytes digest = 6;
+}
+// Cross-linkage information to related CAP or TPEG messages.
+message CrossLinkage {
+	// CAP message ID of CAP source message.
+	optional SourceContentCapMsgID capSourceContent = 1;
+	// CAP message ID of linked CAP source message as relayed in the Incidents element of the CAP Alert block. This attribute contains a single CAP message ID. If more linked CAP source messages exist, multiple linkedSourceContent attributes then are to be created.
+	repeated SourceContentCapMsgID linkedSourceContent = 2;
+
+	repeated LinkedTPEGMessage linkedTPEGMessage = 3;
+}
+// The data structure EawEventType provides an hierarchical two-tier event coding.
+message EawEventType {
+
+	Eaw010_EawEventCode mainEvent = 1;
+
+	optional Eaw100_EawSubEventType subEvent = 2;
+}
+// The data structure EawInstructionType provides an two-tier instruction coding.
+message EawInstructionType {
+
+	Eaw011_EawInstructionCode mainInstruction = 1;
+
+	optional Eaw200_EawSubInstructionType subInstruction = 2;
+}
+// Data structure containing time related information from the CAP source message.
+message CapTimeInfo {
+	// The effective time of the information of the alert message. This attribute should be provided (sourced either from the CAP &lt;effective&gt; element, or the CAP &lt;sent&gt; element otherwise).
+	optional fixed32 effective = 1;
+	// The expected time of the beginning of the subject event of the alert message.
+	optional fixed32 onset = 2;
+	// The expiry time of the information of the alert message.
+	optional fixed32 expires = 3;
+}
+// Generic parameter structure with a parameter name (valueName) and value fields.
+message Parameter {
+	// The content of the valueName attribute is a user-assigned string designating the domain of the code.
+	string valueName = 1;
+	// The content of value attribute is a string (which may represent a number) denoting the value itself.
+	string value = 2;
+}
+// Generic data structure providing an Uniform Resource Indicator.
+message AnyURI {
+
+	string uriString = 1;
+}
+// The data structure SourceContentCapMsgID specifies the identifier of the related source CAP message.
+message SourceContentCapMsgID {
+	// ID of CAP message conform CAP protocol.
+	string capMsgID = 1;
+}
+// The data structure LinkedTPEGMessage specifies a link to related message for the same incident. A link to another message is uniquely specified by the combination of OriginatorServiceID, ContentID, ApplicationID, and messageID. The linked message can be found in the service component where those attributes are equal to the values given in that component: linkedMessage, COID, ApplicationID, originatorSID.
+message LinkedTPEGMessage {
+	// Contains a messageID as pointer to a message. If contentID and originatorSID is not given, the linked messages is contained in the actual component stream of the actual service.
+	uint32 linkedMessage = 1;
+	// Application ID of the TPEG service component related to the linked message. If not specified, then the linked message is also an EAW application message.
+	optional uint32 applicationID = 2;
+	// In case of absence, the linked message can be found in the component stream that has the same contentID as the linking message.
+	optional uint32 contentID = 3;
+	// In case of absence, the linked message can be found in the same service as the linking message.
+	optional tpeg.datatypes.ServiceIdentifier originatorSID = 4;
+}
+// The level, or significance, of the alert, in terms of user relevant terms, e.g. alerting colour codes for weather, or indicating whether it is an exercise or test message.
+enum Eaw001_EawAlertLevel {
+	// Unknown alert type, yet actionable by all targeted recipients.
+	EAW001_EAWALERTLEVEL_UNKNOWN = 0;
+	// Alert level to be determined from CAP originated &lt;urgency&gt;, &lt;severity&gt;, and &lt;certainty&gt; attributes to collectively distinguish less emphatic from more emphatic messages. This is the default signalisation of alert level.
+	EAW001_EAWALERTLEVEL_CAP_DERIVED_LEVEL = 1;
+	// Generic alert, actionable by all targeted recipients. The type of alert is not further specified.
+	EAW001_EAWALERTLEVEL_ALERT = 10;
+	// Statement, actionable by all targeted recipients. A statement may be either issued as a follow-up message to a warning, watch, or emergency, that may update, extend, or cancel the message it is following up or a notification of hazardous weather, civil or other event for which no type of advisory, watch, or warning exists.
+	EAW001_EAWALERTLEVEL_STATEMENT = 11;
+	// Advisory, actionable by all targeted recipients. An advisory may be issued  when a hazardous weather, civil or other event is occurring, imminent, or likely. Advisories are for "less serious" conditions than watches, emergencies or warnings that may cause significant inconvenience, and if caution is not exercised could lead to situations that may threaten life or property.
+	EAW001_EAWALERTLEVEL_ADVISORY = 12;
+	// Emergency, actionable by all targeted recipients. An emergency may be issued when an event that by itself cannot pose a threat to life or property, but may indirectly cause other events to happen that may pose a threat to life or property. An example of this would be a power outage.
+	EAW001_EAWALERTLEVEL_EMERGENCY = 13;
+	// Watch, actionable by all targeted recipients. A watch may be issued  when the risk for a hazardous weather, civil, or other event has increased significantly, but its occurrence, location, or timing is still uncertain. It is intended to provide enough lead time so those who need to set their plans in motion can do so.
+	EAW001_EAWALERTLEVEL_WATCH = 14;
+	// Warning, actionable by all targeted recipients. A warning may be issued when a hazardous weather, civil, or other event is occurring, imminent, or likely. The warning, which usually warns of a specific hazard and gives specific protective action, has a higher priority than an emergency warning.
+	EAW001_EAWALERTLEVEL_WARNING = 15;
+	// Outlook, actionable by all targeted recipients. An outlook may be issued on a daily basis to indicate that a hazardous weather, civil, or other event may occur in the next several days.
+	EAW001_EAWALERTLEVEL_OUTLOOK = 16;
+	// Generic alert level for test messages that may or may not involve the general public and may or may not require special receivers.
+	EAW001_EAWALERTLEVEL_TEST = 17;
+	// Highest severity level for Alerts. Opt-out by receivers is NOT permitted. This level corresponds to EU-Alert "level 1" and WEA level "Presidential Alert".
+	EAW001_EAWALERTLEVEL_LEVEL_1_ALERT = 20;
+	// Second highest severity level for Alerts. Opt-out by receivers is permitted. This level corresponds to EU-Alert "level 2" and WEA level "Extreme Alert".
+	EAW001_EAWALERTLEVEL_LEVEL_2_ALERT = 21;
+	// Third highest severity level for Alerts. Opt-out by receivers is permitted. This level corresponds to EU-Alert "level 3" and WEA level "Severe Alert".
+	EAW001_EAWALERTLEVEL_LEVEL_3_ALERT = 22;
+	// Information. Users should be able to opt-out from these messages. This level corresponds to EU-Alert "level 4"  and WEA level "Public Safety Message".
+	EAW001_EAWALERTLEVEL_LEVEL_4_ALERT = 23;
+	// level for amber (child abduction) alerts. This level corresponds to EU-Alert "EU-Amber" and WEA level "Child Abduction Alert".
+	EAW001_EAWALERTLEVEL_AMBER_ALERT_LEVEL = 24;
+	// Alert level for test messages that may or may not involve the general public and may or may not require special receivers. This level corresponds to EU-Alert "EU-Monthly Test" and WEA level "Required Monthly Test".
+	EAW001_EAWALERTLEVEL_MONTHLY_TEST = 25;
+	// WMO weather colour code. No particular awareness of the weather is required.
+	EAW001_EAWALERTLEVEL_CODE_GREEN = 30;
+	// WMO weather colour code. The weather is potentially dangerous. The weather phenomena that have been forecast are not unusual, but be attentive if you intend to practice activities exposed to meteorological risks. Keep informed about the expected meteorological conditions and do not take any avoidable risk.
+	EAW001_EAWALERTLEVEL_CODE_YELLOW = 31;
+	// WMO weather colour code. The weather is dangerous. Unusual meteorological phenomena have been forecast. Damage and casualties are likely to happen. Be very vigilant and keep regularly informed about the detailed expected meteorological conditions. Be aware of the risks that might be unavoidable. Follow any advice given by your authorities
+	EAW001_EAWALERTLEVEL_CODE_ORANGE = 32;
+	// WMO weather colour code. The weather is very dangerous. Exceptionally intense meteorological phenomena have been forecast. Major damage and accidents are likely, in many cases with threat to life and limb, over a wide area. Keep frequently informed about detailed expected meteorological conditions and risks. Follow orders and any advice given by your authorities under all circumstances, be prepared for extraordinary measures.
+	EAW001_EAWALERTLEVEL_CODE_RED = 33;
+	// Civil protection and disaster assistance warning level 1 for official danger notifications with highest priority.
+	EAW001_EAWALERTLEVEL_CIVIL_PROTECTION_AND_DISASTER_ASSISTANCE_WARNING_LEVEL_1 = 40;
+	// Civil protection and disaster assistance warning level 2 for official danger notifications with medium priority.
+	EAW001_EAWALERTLEVEL_CIVIL_PROTECTION_AND_DISASTER_ASSISTANCE_WARNING_LEVEL_2 = 41;
+	// Civil protection and disaster assistance warning level 3 for danger notifications with low priority.
+	EAW001_EAWALERTLEVEL_CIVIL_PROTECTION_AND_DISASTER_ASSISTANCE_WARNING_LEVEL_3 = 42;
+	// (CISS colour code Black). Poses an imminent threat to the provision of wide-scale critical infrastructure services, national government stability, or to the lives of persons.
+	EAW001_EAWALERTLEVEL_CYBER_INCIDENT_SEVERITY_SCHEMA_LEVEL_5_EMERGENCY = 50;
+	// (CISS colour code Red). Likely to result in a significant impact to public health or safety, national security, economic security, foreign relations, or civil liberties.
+	EAW001_EAWALERTLEVEL_CYBER_INCIDENT_SEVERITY_SCHEMA_LEVEL_4_SEVERE = 51;
+	// (CISS colour code Orange). Likely to result in a demonstrable impact to public health or safety, national security, economic security, foreign relations, civil liberties, or public confidence.
+	EAW001_EAWALERTLEVEL_CYBER_INCIDENT_SEVERITY_SCHEMA_LEVEL_3_HIGH = 52;
+	// (CISS colour code Yellow). May impact public health or safety, national security, economic security, foreign relations, civil liberties, or public confidence.
+	EAW001_EAWALERTLEVEL_CYBER_INCIDENT_SEVERITY_SCHEMA_LEVEL_2_MEDIUM = 53;
+	// (CISS colour code Green). Unlikely to impact public health or safety, national security, economic security, foreign relations, civil liberties, or public confidence
+	EAW001_EAWALERTLEVEL_CYBER_INCIDENT_SEVERITY_SCHEMA_LEVEL_1_LOW = 54;
+	// (CISS colour code White). Unsubstantiated or inconsequential event.
+	EAW001_EAWALERTLEVEL_CYBER_INCIDENT_SEVERITY_SCHEMA_LEVEL_0_BASELINE = 55;
+	// Undefined alert type, yet actionable by all targeted recipients. This alert level, and translations, shall be used by receivers if a new eaw001:EawAlertLevel is encountered which is not known in the receiver.
+	EAW001_EAWALERTLEVEL_UNDEFINED = 255;
+}
+
+enum Eaw002_CapCategory {
+	// Unknown event category
+	EAW002_CAPCATEGORY_UNKNOWN = 0;
+	// Geophysical (inc. landslide)
+	EAW002_CAPCATEGORY_GEO = 1;
+	// Meteorological (inc. flood)
+	EAW002_CAPCATEGORY_MET = 2;
+	// General emergency and public safety
+	EAW002_CAPCATEGORY_SAFETY = 3;
+	// Law enforcement, military, homeland and local/private security
+	EAW002_CAPCATEGORY_SECURITY = 4;
+	// Rescue and recovery
+	EAW002_CAPCATEGORY_RESCUE = 5;
+	// Fire suppression and rescue
+	EAW002_CAPCATEGORY_FIRE = 6;
+	// Medical and public health
+	EAW002_CAPCATEGORY_HEALTH = 7;
+	// Pollution and other environmental
+	EAW002_CAPCATEGORY_ENV = 8;
+	// Public and private transportation
+	EAW002_CAPCATEGORY_TRANSPORT = 9;
+	// Utility, telecommunication, other non-transport infrastructure
+	EAW002_CAPCATEGORY_INFRA = 10;
+	// Chemical, Biological, Radiological, Nuclear or High-Yield Explosive threat or attack
+	EAW002_CAPCATEGORY_CBRNE = 11;
+	// Other events
+	EAW002_CAPCATEGORY_OTHER = 12;
+	// Undefined event category
+	EAW002_CAPCATEGORY_UNDEFINED = 255;
+}
+// The code denoting the urgency of the subject event of the alert message.
+enum Eaw003_CapUrgency {
+	// Urgency not known
+	EAW003_CAPURGENCY_UNKNOWN = 0;
+	// Responsive action SHOULD be taken immediately
+	EAW003_CAPURGENCY_IMMEDIATE = 1;
+	// Responsive action SHOULD be taken soon (within next hour)
+	EAW003_CAPURGENCY_EXPECTED = 2;
+	// Responsive action SHOULD be taken in the near future
+	EAW003_CAPURGENCY_FUTURE = 3;
+	// Responsive action is no longer required
+	EAW003_CAPURGENCY_PAST = 4;
+	// Undefined urgency
+	EAW003_CAPURGENCY_UNDEFINED = 255;
+}
+// The code denoting the severity of the subject event of the alert message.
+enum Eaw004_CapSeverity {
+	// Severity unknown
+	EAW004_CAPSEVERITY_UNKNOWN = 0;
+	// Extraordinary threat to life or property
+	EAW004_CAPSEVERITY_EXTREME = 1;
+	// Significant threat to life or property
+	EAW004_CAPSEVERITY_SEVERE = 2;
+	// Possible threat to life or property
+	EAW004_CAPSEVERITY_MODERATE = 3;
+	// Minimal to no known threat to life or property
+	EAW004_CAPSEVERITY_MINOR = 4;
+	// Undefined threat to life or property
+	EAW004_CAPSEVERITY_UNDEFINED = 255;
+}
+// The code denoting the certainty of the subject event of the alert message.
+enum Eaw005_CapCertainty {
+	// Certainty unknown
+	EAW005_CAPCERTAINTY_UNKNOWN = 0;
+	// Determined to have occurred or to be ongoing
+	EAW005_CAPCERTAINTY_OBSERVED = 1;
+	// Likely (chance of occurrence  greater than 50%)
+	EAW005_CAPCERTAINTY_LIKELY = 2;
+	// Possible but not likely (chance of occurrence smaller or equal to 50%)
+	EAW005_CAPCERTAINTY_POSSIBLE = 3;
+	// Not expected to occur (chance of occurrence near zero %)
+	EAW005_CAPCERTAINTY_UNLIKELY = 4;
+	// Undefined certainty
+	EAW005_CAPCERTAINTY_UNDEFINED = 255;
+}
+// Indication for the user of  the status of the alert message. This status allows for a differentiation of technical updates and user relevant updates. The User relevant status may be signalled by the receiver.
+enum Eaw006_EawUserStatus {
+	// Unknown user status, not to be processed by receivers.
+	EAW006_EAWUSERSTATUS_UNKNOWN = 0;
+	// Initial information of an alert requiring attention by targeted recipients.
+	EAW006_EAWUSERSTATUS_NEW = 1;
+	// Significant user-relevant update of the alert information since the initial publication. Targeted recipients should be informed that the alert information is updated.
+	EAW006_EAWUSERSTATUS_UPDATE = 2;
+	// The subject event does not longer poses a threat or concern. Targeted recipients should be informed that the alert is cleared.
+	EAW006_EAWUSERSTATUS_CLEARED = 3;
+	// Undefined user status, not to be processed by receivers.
+	EAW006_EAWUSERSTATUS_UNDEFINED = 255;
+}
+// The code denoting the type of action recommended for the target audience.
+enum Eaw007_CapResponse {
+	// No action known.
+	EAW007_CAPRESPONSE_UNKNOWN = 0;
+	// Take shelter in place or per specific instruction.
+	EAW007_CAPRESPONSE_SHELTER = 1;
+	// Relocate as instructed in the specific instruction
+	EAW007_CAPRESPONSE_EVACUATE = 2;
+	// Make preparations per the specific instruction
+	EAW007_CAPRESPONSE_PREPARE = 3;
+	// Execute a pre-planned activity identified in specific instruction
+	EAW007_CAPRESPONSE_EXECUTE = 4;
+	// Avoid the subject event as per the specific instruction
+	EAW007_CAPRESPONSE_AVOID = 5;
+	// Attend to information sources as described in specific instruction
+	EAW007_CAPRESPONSE_MONITOR = 6;
+	// Evaluate the information in this message. (This value SHOULD NOT be used in public warning applications.)
+	EAW007_CAPRESPONSE_ASSESS = 7;
+	// The subject event no longer poses a threat or concern and any follow on action is described in specific instruction
+	EAW007_CAPRESPONSE_ALL_CLEAR = 8;
+	// No action recommended
+	EAW007_CAPRESPONSE_NONE = 9;
+	// Undefined type of response, please see instructions, if any
+	EAW007_CAPRESPONSE_UNDEFINED = 255;
+}
+
+enum Eaw010_EawEventCode {
+
+	EAW010_EAWEVENTCODE_UNKNOWN = 0;
+	// Administration related information.
+	EAW010_EAWEVENTCODE_ADMINISTRATION = 1;
+	// Air quality related hazards.
+	EAW010_EAWEVENTCODE_AIR_QUALITY = 2;
+	// Animal health related hazards.
+	EAW010_EAWEVENTCODE_ANIMAL_HEALTH = 3;
+	// Dangerous animals related hazards.
+	EAW010_EAWEVENTCODE_DANGEROUS_ANIMALS = 4;
+	// Aviation related hazards.
+	EAW010_EAWEVENTCODE_AVIATION = 5;
+	// Civil emergencies.
+	EAW010_EAWEVENTCODE_CIVIL = 6;
+	// Criminal activity related hazards.
+	EAW010_EAWEVENTCODE_CRIMINAL_ACTIVITIES = 7;
+	// Fire related hazards.
+	EAW010_EAWEVENTCODE_FIRE = 8;
+	// Flooding related hazards.
+	EAW010_EAWEVENTCODE_FLOOD = 9;
+	// Fog related hazards.
+	EAW010_EAWEVENTCODE_FOG = 10;
+	// Natural disaster related hazards.
+	EAW010_EAWEVENTCODE_GEOLOGICAL = 11;
+	// Hazardous materials related hazards.
+	EAW010_EAWEVENTCODE_HAZARDOUS_MATERIALS = 12;
+	// Health related hazards.
+	EAW010_EAWEVENTCODE_HEALTH = 13;
+	// Ice related hazards.
+	EAW010_EAWEVENTCODE_ICE = 14;
+	// Marine area hazards.
+	EAW010_EAWEVENTCODE_MARINE = 15;
+	// Missing person related hazards.
+	EAW010_EAWEVENTCODE_MISSING_PERSON = 16;
+	// Other non-urgent hazards.
+	EAW010_EAWEVENTCODE_OTHER_NON_URGENT = 17;
+	// Other (urgent) hazards.
+	EAW010_EAWEVENTCODE_OTHER_URGENT = 18;
+	// Plant health related hazards.
+	EAW010_EAWEVENTCODE_PLANT_HEALTH = 19;
+	// Preparedness reminders.
+	EAW010_EAWEVENTCODE_PREPAREDNESS_REMINDERS = 20;
+	// Product safety alerts and warnings.
+	EAW010_EAWEVENTCODE_PRODUCT_SAFETY = 21;
+	// Public services safety alerts and warnings.
+	EAW010_EAWEVENTCODE_PUBLIC_SERVICES = 22;
+	// Railway alerts and warnings.
+	EAW010_EAWEVENTCODE_RAILWAY = 23;
+	// Rescue related alerts and warnings.
+	EAW010_EAWEVENTCODE_RESCUE = 24;
+	// Roadway related alerts and warnings.
+	EAW010_EAWEVENTCODE_ROADWAY = 25;
+	// Search related alerts and warnings.
+	EAW010_EAWEVENTCODE_SEARCH = 26;
+	// Storm related alerts and warnings.
+	EAW010_EAWEVENTCODE_STORM = 27;
+	// Temperature related alerts and warnings.
+	EAW010_EAWEVENTCODE_TEMPERATURE = 28;
+	// Test messages.
+	EAW010_EAWEVENTCODE_TEST_MESSAGE = 29;
+	// Utility services related alerts and warnings.
+	EAW010_EAWEVENTCODE_UTILITY = 30;
+	// Wind related alerts and warnings.
+	EAW010_EAWEVENTCODE_WIND = 31;
+	// Water quality related alerts and warnings.
+	EAW010_EAWEVENTCODE_WATER_QUALITY = 32;
+	// Undefined event code.
+	EAW010_EAWEVENTCODE_UNDEFINED = 255;
+}
+// Enumeration with first-level, main instructions for the recipient to do something. These instructions consider whether the recipient is in the affected area(s), or outside the affected area (but their itinerary could be affected by the message). These main level instructions are further detailed by additional second level instructions which contain further detail.
+enum Eaw011_EawInstructionCode {
+
+	EAW011_EAWINSTRUCTIONCODE_UNKNOWN = 0;
+	// Main level instruction targeting recipients in the affected area(s) to take precautions for their safety.
+	EAW011_EAWINSTRUCTIONCODE_ENSURE_YOUR_SAFETY_TAKE_PRECAUTION = 1;
+	// Main level instruction targeting recipients in the affected area(s) to follow instructions from the applicable local authorities.
+	EAW011_EAWINSTRUCTIONCODE_FOLLOW_INSTRUCTIONS_OF_LOCAL_AUTHORITIES = 2;
+	// Main level instruction targeting recipients outside the affected area(s) to (re)consider their itineraries as travel may be difficult or restricted in the affected area(s).
+	EAW011_EAWINSTRUCTIONCODE_EXPECT_TRAVEL_DISRUPTIONS_IN_THE_AREA = 3;
+	// Main level instruction targeting all recipients to inform themselves on the actual situation and updates thereof via all possible media channels.
+	EAW011_EAWINSTRUCTIONCODE_INFORM_YOURSELF_VIA_ALL_POSSIBLE_MEDIA = 4;
+	// Main level instruction targeting recipients in the affected area(s) to take precautions for their safety.
+	EAW011_EAWINSTRUCTIONCODE_ENSURE_YOUR_SAFETY_TAKE_PRECAUTION_RESIDENTIAL = 5;
+	// Undefined instruction code.
+	EAW011_EAWINSTRUCTIONCODE_UNDEFINED = 255;
+}
+
+message Eaw100_EawSubEventType {
+	oneof Eaw100_EawSubEventType_opt {
+		Eaw111_Geological eaw111_Geological = 1;
+		Eaw108_Fire eaw108_Fire = 2;
+		Eaw129_TestMessage eaw129_TestMessage = 3;
+		Eaw127_Storm eaw127_Storm = 4;
+		Eaw106_Civil eaw106_Civil = 5;
+		Eaw132_WaterQuality eaw132_WaterQuality = 6;
+		Eaw107_CriminalActivities eaw107_CriminalActivities = 7;
+		Eaw117_OtherNonUrgent eaw117_OtherNonUrgent = 8;
+		Eaw103_AnimalHealth eaw103_AnimalHealth = 9;
+		Eaw109_Flood eaw109_Flood = 10;
+		Eaw104_DangerousAnimals eaw104_DangerousAnimals = 11;
+		Eaw126_Search eaw126_Search = 12;
+		Eaw110_Fog eaw110_Fog = 13;
+		Eaw112_HazardousMaterials eaw112_HazardousMaterials = 14;
+		Eaw113_Health eaw113_Health = 15;
+		Eaw131_Wind eaw131_Wind = 16;
+		Eaw119_PlantHealth eaw119_PlantHealth = 17;
+		Eaw125_Roadway eaw125_Roadway = 18;
+		Eaw122_PublicServices eaw122_PublicServices = 19;
+		Eaw124_Rescue eaw124_Rescue = 20;
+		Eaw114_Ice eaw114_Ice = 21;
+		Eaw105_Aviation eaw105_Aviation = 22;
+		Eaw123_Railway eaw123_Railway = 23;
+		Eaw128_Temperature eaw128_Temperature = 24;
+		Eaw118_Other eaw118_Other = 25;
+		Eaw130_Utility eaw130_Utility = 26;
+		Eaw116_MissingPerson eaw116_MissingPerson = 27;
+		Eaw115_Marine eaw115_Marine = 28;
+	}
+}
+// This enumeration type provides more detailed event codes for animal health related hazards.
+enum Eaw103_AnimalHealth {
+
+	EAW103_ANIMALHEALTH_UNKNOWN = 0;
+
+	EAW103_ANIMALHEALTH_ANIMAL_DISEASE = 1;
+
+	EAW103_ANIMALHEALTH_ANIMAL_FEED = 2;
+	// Hazard due to animal pest or pest infestation.
+	EAW103_ANIMALHEALTH_ANIMAL_PEST = 3;
+
+	EAW103_ANIMALHEALTH_AQUATIC_ANIMAL_DISEASE = 4;
+
+	EAW103_ANIMALHEALTH_AQUATIC_ANIMAL_PEST = 5;
+
+	EAW103_ANIMALHEALTH_ANIMAL_WELFARE = 6;
+
+	EAW103_ANIMALHEALTH_MARINE_DISEASE = 7;
+
+	EAW103_ANIMALHEALTH_MARINE_PEST = 8;
+
+	EAW103_ANIMALHEALTH_ANIMAL_QUARANTINE = 9;
+	// Warning to sheep graziers that actual or forecast weather conditions  pose a high risk for losses of lambs and sheep.  A grazier here is a rancher or farmer who rears or fattens cattle or sheep on grazing land.
+	EAW103_ANIMALHEALTH_SHEEP_GRAZIER_WARNING = 10;
+	// Undefined sub event code, use main event code instead.
+	EAW103_ANIMALHEALTH_UNDEFINED = 255;
+}
+// This enumeration type provides more detailed event codes for dangerous animal related hazards.
+enum Eaw104_DangerousAnimals {
+
+	EAW104_DANGEROUSANIMALS_UNKNOWN = 0;
+
+	EAW104_DANGEROUSANIMALS_DANGEROUS_ANIMAL = 1;
+
+	EAW104_DANGEROUSANIMALS_PLAGUE = 2;
+
+	EAW104_DANGEROUSANIMALS_PLAGUE_OF_INSECTS = 3;
+	// Undefined sub event code, use main event code instead.
+	EAW104_DANGEROUSANIMALS_UNDEFINED = 255;
+}
+// This enumeration type provides more detailed event codes for aviation related hazards.
+enum Eaw105_Aviation {
+
+	EAW105_AVIATION_UNKNOWN = 0;
+
+	EAW105_AVIATION_AIRCRAFT_CRASH = 1;
+
+	EAW105_AVIATION_AIRCRAFT_INCIDENT = 2;
+
+	EAW105_AVIATION_AIRPORT_CLOSURE = 3;
+
+	EAW105_AVIATION_AIRSPACE_CLOSURE = 4;
+
+	EAW105_AVIATION_AIRPORT_LIGHTNING_THREAT = 5;
+
+	EAW105_AVIATION_AIRPORT_THUNDER_THREAT = 6;
+
+	EAW105_AVIATION_AVIATION_SECURITY = 7;
+
+	EAW105_AVIATION_FALLING_OBJECT = 8;
+
+	EAW105_AVIATION_NOTICE_TO_AIRMEN = 9;
+
+	EAW105_AVIATION_SATELLITE_SPACE_ENTRY_DEBRIS = 10;
+	// Undefined sub event code, use main event code instead.
+	EAW105_AVIATION_UNDEFINED = 255;
+}
+// This enumeration type provides more detailed event codes for civil emergencies and related hazards.
+enum Eaw106_Civil {
+
+	EAW106_CIVIL_UNKNOWN = 0;
+
+	EAW106_CIVIL_BUILDING_COLLAPSE = 1;
+
+	EAW106_CIVIL_CIVIL_EMERGENCY = 2;
+
+	EAW106_CIVIL_DEMONSTRATION = 3;
+
+	EAW106_CIVIL_PUBLIC_EVENT = 4;
+
+	EAW106_CIVIL_MAJOR_EVENT = 5;
+
+	EAW106_CIVIL_VOLUNTEER_REQUEST = 6;
+
+	EAW106_CIVIL_UNEXPLODED_BOMB = 7;
+
+	EAW106_CIVIL_AIR_RAID = 8;
+
+	EAW106_CIVIL_MISSILE_ATTACK = 9;
+
+	EAW106_CIVIL_DANGER_BY_WEAPONS = 10;
+
+	EAW106_CIVIL_ATTACK_WITH_NUCLEAR_WEAPONS = 11;
+
+	EAW106_CIVIL_SECURITY_WARNING = 12;
+	// Undefined sub event code, use main event code instead.
+	EAW106_CIVIL_UNDEFINED = 255;
+}
+// This enumeration type provides more detailed event codes for criminal activity related hazards.
+enum Eaw107_CriminalActivities {
+
+	EAW107_CRIMINALACTIVITIES_UNKNOWN = 0;
+
+	EAW107_CRIMINALACTIVITIES_CYBER_CRIME = 1;
+
+	EAW107_CRIMINALACTIVITIES_DANGEROUS_PERSON = 2;
+
+	EAW107_CRIMINALACTIVITIES_HOME_CRIME = 3;
+
+	EAW107_CRIMINALACTIVITIES_INDUSTRIAL_CRIME = 4;
+
+	EAW107_CRIMINALACTIVITIES_RETAIL_CRIME = 5;
+
+	EAW107_CRIMINALACTIVITIES_TERRORISM = 6;
+
+	EAW107_CRIMINALACTIVITIES_VEHICLE_CRIME = 7;
+
+	EAW107_CRIMINALACTIVITIES_LIFE_THREATENING_SITUATION = 8;
+
+	EAW107_CRIMINALACTIVITIES_BOMB_AMMUNITION_DISCOVERY = 9;
+	// Undefined sub event code, use main event code instead.
+	EAW107_CRIMINALACTIVITIES_UNDEFINED = 255;
+}
+// This enumeration type provides more detailed event codes for fire related hazards.
+enum Eaw108_Fire {
+
+	EAW108_FIRE_UNKNOWN = 0;
+	// Wildfire, also known as bush fire.
+	EAW108_FIRE_WILDFIRE = 1;
+
+	EAW108_FIRE_FIRE_BAN = 2;
+
+	EAW108_FIRE_FIRE_DANGER_LEVEL = 3;
+
+	EAW108_FIRE_FOREST_FIRE = 4;
+
+	EAW108_FIRE_FIRE_WEATHER = 5;
+
+	EAW108_FIRE_GRASS_FIRE = 6;
+
+	EAW108_FIRE_INDUSTRIAL_FIRE = 7;
+
+	EAW108_FIRE_URBAN_FIRE = 8;
+
+	EAW108_FIRE_MAJOR_FIRE = 9;
+
+	EAW108_FIRE_SMOKE_ALERT = 10;
+
+	EAW108_FIRE_STRUCTURE_FIRE = 11;
+
+	EAW108_FIRE_TOTAL_FIRE_BAN = 12;
+
+	EAW108_FIRE_COMBUSTION_GASES = 13;
+
+	EAW108_FIRE_FIRE_HAZARD = 14;
+	// Undefined sub event code, use main event code instead.
+	EAW108_FIRE_UNDEFINED = 255;
+}
+// This enumeration type provides more detailed event codes for flood related hazards.
+enum Eaw109_Flood {
+
+	EAW109_FLOOD_UNKNOWN = 0;
+
+	EAW109_FLOOD_DAM_BREACH = 1;
+
+	EAW109_FLOOD_DAM_OVERFLOW = 2;
+
+	EAW109_FLOOD_FLASH_FLOOD = 3;
+
+	EAW109_FLOOD_OVERLAND_FLOW_FLOOD = 4;
+
+	EAW109_FLOOD_HIGH_WATER_LEVEL = 5;
+
+	EAW109_FLOOD_KING_TIDE = 6;
+	// Breach of a levee, also known as levee failure.
+	EAW109_FLOOD_LEVEE_BREACH = 7;
+
+	EAW109_FLOOD_DIKE_BREACH = 8;
+
+	EAW109_FLOOD_STORM_SURGE = 9;
+
+	EAW109_FLOOD_RIVERINE_FLOOD = 10;
+
+	EAW109_FLOOD_FLOODING = 11;
+	// Undefined sub event code, use main event code instead.
+	EAW109_FLOOD_UNDEFINED = 255;
+}
+// This enumeration type provides more detailed event codes for fog related hazards.
+enum Eaw110_Fog {
+
+	EAW110_FOG_UNKNOWN = 0;
+
+	EAW110_FOG_FOG = 1;
+	// Undefined sub event code, use main event code instead.
+	EAW110_FOG_UNDEFINED = 255;
+}
+// This enumeration type provides more detailed event codes for geological or geophysical related hazards (natural phenomena such as earthquakes, tsunami's or landslides).
+enum Eaw111_Geological {
+
+	EAW111_GEOLOGICAL_UNKNOWN = 0;
+
+	EAW111_GEOLOGICAL_AVALANCHE = 1;
+
+	EAW111_GEOLOGICAL_AVALANCHE_DANGER = 2;
+
+	EAW111_GEOLOGICAL_EARTHQUAKE = 3;
+	// Danger of sinkholes and caves due to dissolution of soluble rocks such as limestone, dolomite, and gypsum.
+	EAW111_GEOLOGICAL_KARST_HAZARD = 4;
+	// Destructive mudflow on the slopes of a volcano
+	EAW111_GEOLOGICAL_LAHAR = 5;
+
+	EAW111_GEOLOGICAL_LANDSLIDE = 6;
+
+	EAW111_GEOLOGICAL_MUDSLIDE = 7;
+	// Ice calving at end of a glacier
+	EAW111_GEOLOGICAL_GLACIAL_ICE_AVALANCHE = 8;
+	// A lava flow is a moving outpouring of lava (molten rock)
+	EAW111_GEOLOGICAL_LAVA_FLOW = 9;
+	// A period of rapid magnetic field variation. It can last from hours to days. Occasionally, the Sun's magnetic field directly links with that of the Earth. This direct magnetic connection is not the normal state of affairs, but when it occurs, charged particles, traveling along magnetic-field lines, can easily enter the magnetosphere, generate currents, and cause the magnetic field to undergo time-dependent variation.
+	EAW111_GEOLOGICAL_MAGNETIC_STORM = 10;
+	// Strong surge of solar wind which disturbs the outer part of the Earth's magnetic field, which undergoes a complex oscillation. This generates associated electric currents in the near-Earth space environment, which in turn generates additional magnetic-field variations.
+	EAW111_GEOLOGICAL_SOLAR_STORM = 11;
+
+	EAW111_GEOLOGICAL_METEORITE_IMPACT = 12;
+	// Fast-moving current of hot gas and volcanic matter (collectively known as tephra) that moves away from a volcano.
+	EAW111_GEOLOGICAL_PYROCLASTIC_FLOW = 13;
+	// A flowing mixture of gas and rock fragments ejected during some volcanic eruptions.
+	EAW111_GEOLOGICAL_PYROCLASTIC_SURGE = 14;
+	// Tidal wave, also known as a seismic sea wave, is a series of waves in a water body (lake or ocean) caused by the displacement of a large volume of water.
+	EAW111_GEOLOGICAL_TSUNAMI = 15;
+	// Tsunami or tidal wave with threat extending to inland areas.
+	EAW111_GEOLOGICAL_LAND_THREAT_TSUNAMI = 16;
+	// Tsunami or tidal wave with threat for beach areas.
+	EAW111_GEOLOGICAL_BEACH_THREAT_TSUNAMI = 17;
+
+	EAW111_GEOLOGICAL_VOLCANIC_ASH_CLOUD = 18;
+
+	EAW111_GEOLOGICAL_VOLCANO_ERUPTION = 19;
+	// Undefined sub event code, use main event code instead.
+	EAW111_GEOLOGICAL_UNDEFINED = 255;
+}
+// This enumeration type provides more detailed event codes for hazardous materials related hazards.
+enum Eaw112_HazardousMaterials {
+
+	EAW112_HAZARDOUSMATERIALS_UNKNOWN = 0;
+
+	EAW112_HAZARDOUSMATERIALS_ASBESTOS = 1;
+
+	EAW112_HAZARDOUSMATERIALS_BIOLOGICAL_HAZARD = 2;
+
+	EAW112_HAZARDOUSMATERIALS_CHEMICAL_HAZARD = 3;
+
+	EAW112_HAZARDOUSMATERIALS_CHEMICAL_ACCIDENT = 4;
+
+	EAW112_HAZARDOUSMATERIALS_EXPLOSIVE_HAZARD = 5;
+
+	EAW112_HAZARDOUSMATERIALS_MAJOR_POLLUTION = 6;
+
+	EAW112_HAZARDOUSMATERIALS_RADIOLOGICAL_HAZARD = 7;
+
+	EAW112_HAZARDOUSMATERIALS_FALLING_OBJECT = 8;
+
+	EAW112_HAZARDOUSMATERIALS_DANGEROUS_GOODS_ACCIDENT = 9;
+
+	EAW112_HAZARDOUSMATERIALS_GAS_LEAK = 10;
+
+	EAW112_HAZARDOUSMATERIALS_NUCLEAR_POWER_PLANT_ACCIDENT = 11;
+	// Undefined sub event code, use main event code instead.
+	EAW112_HAZARDOUSMATERIALS_UNDEFINED = 255;
+}
+// This enumeration type provides more detailed event codes for health related hazards.
+enum Eaw113_Health {
+
+	EAW113_HEALTH_UNKNOWN = 0;
+
+	EAW113_HEALTH_HEALTH_HAZARD = 1;
+
+	EAW113_HEALTH_INFECTION_HAZARD = 2;
+
+	EAW113_HEALTH_INFECTIOUS_DISEASE = 3;
+
+	EAW113_HEALTH_AMBULANCE = 4;
+
+	EAW113_HEALTH_BLOOD_SUPPLY = 5;
+
+	EAW113_HEALTH_COMMUNICABLE_DISEASE = 6;
+
+	EAW113_HEALTH_DRINKING_WATER = 7;
+
+	EAW113_HEALTH_DRINKING_WATER_CONTAMINATION = 8;
+
+	EAW113_HEALTH_DRUG_SAFETY = 9;
+
+	EAW113_HEALTH_DRUG_SUPPLY = 10;
+
+	EAW113_HEALTH_FOOD_SAFETY = 11;
+
+	EAW113_HEALTH_FOOD_SUPPLY = 12;
+
+	EAW113_HEALTH_FOOD_AND_DRUG_SUPPLY = 13;
+
+	EAW113_HEALTH_HOSPITAL = 14;
+
+	EAW113_HEALTH_HUMAN_QUARANTINE = 15;
+	// Infectious diseases caused by bacteria, viruses and parasites that spread between animals (usually vertebrates) and humans, such as Ebola.
+	EAW113_HEALTH_ZOONOTIC_DISEASE = 16;
+
+	EAW113_HEALTH_ODOUR_NUISANCE = 17;
+
+	EAW113_HEALTH_NOISE_NUISANCE = 18;
+	// Untreated waste water.
+	EAW113_HEALTH_UNTREATED_SEWAGE = 19;
+
+	EAW113_HEALTH_HIGH_UV_RADIATION = 20;
+
+	EAW113_HEALTH_AIR_POLLUTION = 21;
+	// Undefined sub event code, use main event code instead.
+	EAW113_HEALTH_UNDEFINED = 255;
+}
+// This enumeration type provides more detailed event codes for ice related hazards.
+enum Eaw114_Ice {
+
+	EAW114_ICE_UNKNOWN = 0;
+	// Ice Pressure Warnings are issued when a prolonged period of strong winds are forecast, which would cause ice pressure within the ice pack or along the coast.
+	// Strong ice pressure could cause ships to lose the ability to navigate freely and could push ships towards potentially hazardous areas.  Ice Pressure Warnings are relevant to all marine interests and can be issued for all marine areas that have an ice forecast.
+	EAW114_ICE_ICE_PRESSURE = 1;
+	// Rapid closing of coastal leads warnings may be issued when the forecast combination of winds and ocean currents will result in the movement of pack ice rapidly closing any open waterways, known as leads, along the affected coastal sections.
+	// Coastal leads can become blocked by six tenths or more of grey white or older ice within a 12-hour period. Rapid Closing of Coastal Leads Warnings are relevant to all marine interests and can be issued for all coastal marine areas that have an ice forecast.
+	EAW114_ICE_RAPID_CLOSING_OF_COASTAL_LEADS = 2;
+	// A special ice Warning may be issued for ice conditions that may be hazardous to marine operations. For example, a special ice warning may be issued when ice is in an area at a time when ice is not usually there.
+	EAW114_ICE_SPECIAL_ICE = 3;
+	// Undefined sub event code, use main event code instead.
+	EAW114_ICE_UNDEFINED = 255;
+}
+// This enumeration type provides more detailed event codes for maritime related hazards.
+enum Eaw115_Marine {
+
+	EAW115_MARINE_UNKNOWN = 0;
+	// Freezing spray warnings may be issued when moderate or severe freezing spray is occurring or is forecast to occur. Moderate or severe freezing spray implies ice build-up.
+	EAW115_MARINE_FREEZING_SPRAY = 1;
+
+	EAW115_MARINE_STRONG_WIND = 2;
+
+	EAW115_MARINE_GALE_WIND = 3;
+
+	EAW115_MARINE_STORM_FORCE_WIND = 4;
+
+	EAW115_MARINE_HURRICANE_FORCE_WIND = 5;
+
+	EAW115_MARINE_ICEBERG = 6;
+	// Large waves occur or are forecasted to occur along the coastal area.
+	EAW115_MARINE_LARGE_COASTAL_SURF = 7;
+	// Large swell waves occur or are forecasted to occur. Swell waves are collections of waves produced by storm winds raging hundreds of kilometres out to sea, rather than the product of local winds along beaches. Large swell waves can capsize ships.
+	EAW115_MARINE_LARGE_SWELL_WAVES = 8;
+
+	EAW115_MARINE_MARINE_SECURITY = 9;
+
+	EAW115_MARINE_NAUTICAL_INCIDENT = 10;
+
+	EAW115_MARINE_SHIPPING_ACCIDENT = 11;
+	// Special marine warnings may be issued for any other weather-related phenomena which may result in a hazardous impact on local marine operations
+	EAW115_MARINE_SPECIAL_MARINE = 12;
+
+	EAW115_MARINE_OIL_SPILL = 13;
+	// Sudden, sharp increase in wind speed lasting minutes, contrary to a wind gust lasting seconds.
+	EAW115_MARINE_SQUALL = 14;
+	// A waterspout is a whirling column of air and water mist occurring over open water.
+	EAW115_MARINE_WATERSPOUT = 15;
+	// Undefined sub event code, use main event code instead.
+	EAW115_MARINE_UNDEFINED = 255;
+}
+// This enumeration type provides more detailed event codes for missing persons related hazards.
+enum Eaw116_MissingPerson {
+
+	EAW116_MISSINGPERSON_UNKNOWN = 0;
+	// Child abduction emergency alert
+	EAW116_MISSINGPERSON_AMBER_ALERT = 1;
+
+	EAW116_MISSINGPERSON_MISSING_VULNERABLE_PERSON = 2;
+	// Alert for missing persons--especially senior citizens with Alzheimer's disease, dementia, or other mental disabilities --in order to aid in locating them.
+	EAW116_MISSINGPERSON_SILVER_ALERT = 3;
+	// Undefined sub event code, use main event code instead.
+	EAW116_MISSINGPERSON_UNDEFINED = 255;
+}
+
+enum Eaw117_OtherNonUrgent {
+
+	EAW117_OTHERNONURGENT_UNKNOWN = 0;
+	// Undefined sub event code, use main event code instead.
+	EAW117_OTHERNONURGENT_UNDEFINED = 255;
+}
+// This enumeration type provides more detailed event codes for other urgent hazards, not fitting to one of the sub event code enumerated types.
+enum Eaw118_Other {
+
+	EAW118_OTHER_UNKNOWN = 0;
+	// General warning to the public.
+	EAW118_OTHER_WARNING = 1;
+	// Undefined sub event code, use main event code instead.
+	EAW118_OTHER_UNDEFINED = 255;
+}
+// This enumeration type provides more detailed event codes for plant health related hazards.
+enum Eaw119_PlantHealth {
+
+	EAW119_PLANTHEALTH_UNKNOWN = 0;
+
+	EAW119_PLANTHEALTH_PLANT_INFECTIOUS_DISEASE = 1;
+
+	EAW119_PLANTHEALTH_PLANT_PEST = 2;
+
+	EAW119_PLANTHEALTH_PLANT_QUARANTINE = 3;
+	// Undefined sub event code, use main event code instead.
+	EAW119_PLANTHEALTH_UNDEFINED = 255;
+}
+// This enumeration type provides more detailed event codes for public services related disruptions or hazards.
+enum Eaw122_PublicServices {
+
+	EAW122_PUBLICSERVICES_UNKNOWN = 0;
+	// Closure of a facility due to an emergency situation
+	EAW122_PUBLICSERVICES_FACILITY_CLOSURE = 1;
+	// A facility lockdown is an emergency protocol that usually prevents people or information from leaving the facility.
+	EAW122_PUBLICSERVICES_FACILITY_LOCKDOWN = 2;
+	// Facilities to preserve the well-being of people affected by an emergency or disaster.
+	EAW122_PUBLICSERVICES_EMERGENCY_SUPPORT_FACILITIES = 3;
+	// Services required to preserve the well-being of people affected by an emergency or disaster.
+	EAW122_PUBLICSERVICES_EMERGENCY_SUPPORT_SERVICES = 4;
+
+	EAW122_PUBLICSERVICES_SCHOOL_BUS = 5;
+	// Closure of a school due to an emergency situation
+	EAW122_PUBLICSERVICES_SCHOOL_CLOSURE = 6;
+	// A school lockdown is an emergency protocol that usually prevents people or information from leaving the school.
+	EAW122_PUBLICSERVICES_SCHOOL_LOCKDOWN = 7;
+	// Service or facility warning.
+	EAW122_PUBLICSERVICES_SERVICE_OR_FACILITY = 8;
+	// Public transit warning. Public transit, or mass transit is transport of passengers by group travel systems available for use by the general public.
+	EAW122_PUBLICSERVICES_TRANSIT = 9;
+	// Undefined sub event code, use main event code instead.
+	EAW122_PUBLICSERVICES_UNDEFINED = 255;
+}
+// This enumeration type provides more detailed event codes for aviation related disruptions or hazards.
+enum Eaw123_Railway {
+
+	EAW123_RAILWAY_UNKNOWN = 0;
+	// Incident involving a train.
+	EAW123_RAILWAY_RAIL_INCIDENT = 1;
+	// Accident involving a train.
+	EAW123_RAILWAY_RAIL_ACCIDENT = 2;
+	// Undefined sub event code, use main event code instead.
+	EAW123_RAILWAY_UNDEFINED = 255;
+}
+// This enumeration type provides more detailed event codes for rescue related hazards or rescue operations.
+enum Eaw124_Rescue {
+
+	EAW124_RESCUE_UNKNOWN = 0;
+	// Active distress beacon, i.e. active emergency radio transmitter.
+	EAW124_RESCUE_DISTRESS_BEACON = 1;
+	// Undefined sub event code, use main event code instead.
+	EAW124_RESCUE_UNDEFINED = 255;
+}
+// This enumeration type provides more detailed event codes for roadway related hazards.
+enum Eaw125_Roadway {
+
+	EAW125_ROADWAY_UNKNOWN = 0;
+
+	EAW125_ROADWAY_BRIDGE_CLOSURE = 1;
+
+	EAW125_ROADWAY_BRIDGE_COLLAPSE = 2;
+
+	EAW125_ROADWAY_HAZARDOUS_ROAD_CONDITIONS = 3;
+	// Thin coating of glaze ice on a surface, especially on roads. The ice itself is not black, but visually transparent, allowing the often black road below to be seen through it. Black ice induces a risk of slippage and subsequent accident due to the unexpected loss of traction.
+	EAW125_ROADWAY_BLACK_ICE = 4;
+
+	EAW125_ROADWAY_TRAFFIC_ACCIDENT = 5;
+
+	EAW125_ROADWAY_ROADWAY_CLOSURE = 6;
+
+	EAW125_ROADWAY_TRAFFIC_DELAY = 7;
+
+	EAW125_ROADWAY_TRAFFIC_INCIDENT = 8;
+
+	EAW125_ROADWAY_ROAD_USAGE_CONDITIONS = 9;
+
+	EAW125_ROADWAY_TRAFFIC_REPORT = 10;
+
+	EAW125_ROADWAY_TRAFFIC_WARNING = 11;
+	// Undefined sub event code, use main event code instead.
+	EAW125_ROADWAY_UNDEFINED = 255;
+}
+// This enumeration type provides more detailed event codes for search operations or search related hazards.
+enum Eaw126_Search {
+
+	EAW126_SEARCH_UNKNOWN = 0;
+	// Search activity ongoing over land.
+	EAW126_SEARCH_OVER_LAND_SEARCH = 1;
+	// Search activity ongoing over water.
+	EAW126_SEARCH_OVER_WATER_SEARCH = 2;
+	// Search activity ongoing in the air.
+	EAW126_SEARCH_AIR_SEARCH = 3;
+	// Undefined sub event code, use main event code instead.
+	EAW126_SEARCH_UNDEFINED = 255;
+}
+// This enumeration type provides more detailed event codes for storm related hazards.
+enum Eaw127_Storm {
+
+	EAW127_STORM_UNKNOWN = 0;
+
+	EAW127_STORM_BLIZZARD = 1;
+
+	EAW127_STORM_BLOWING_SNOW = 2;
+
+	EAW127_STORM_SNOWDRIFTS = 3;
+
+	EAW127_STORM_DUST_STORM = 4;
+
+	EAW127_STORM_FREEZING_DRIZZLE = 5;
+
+	EAW127_STORM_HAIL = 6;
+
+	EAW127_STORM_FREEZING_RAIN = 7;
+
+	EAW127_STORM_HURRICANE = 8;
+
+	EAW127_STORM_TYPHOON = 9;
+
+	EAW127_STORM_RAINFALL = 10;
+
+	EAW127_STORM_HEAVY_RAIN = 11;
+
+	EAW127_STORM_THUNDERSTORM = 12;
+
+	EAW127_STORM_SNOWFALL = 13;
+
+	EAW127_STORM_SNOW_SQUALL = 14;
+
+	EAW127_STORM_TORNADO = 15;
+
+	EAW127_STORM_TROPICAL_CYCLONE = 16;
+
+	EAW127_STORM_TROPICAL_STORM = 17;
+
+	EAW127_STORM_WINTER_STORM = 18;
+
+	EAW127_STORM_WEATHER = 19;
+	// Undefined sub event code, use main event code instead.
+	EAW127_STORM_UNDEFINED = 255;
+}
+// This enumeration type provides more detailed event codes for temperature related hazards.
+enum Eaw128_Temperature {
+
+	EAW128_TEMPERATURE_UNKNOWN = 0;
+	// Exposure to extreme temperatures.
+	EAW128_TEMPERATURE_EXPOSURE = 1;
+	// Condition with frigid arctic air chilling coastal areas with bitter gale-force winds.
+	EAW128_TEMPERATURE_ARCTIC_OUTFLOW = 2;
+	// Prolonged period with cold temperatures.
+	EAW128_TEMPERATURE_COLD_WAVE = 3;
+	// Cold temperatures.
+	EAW128_TEMPERATURE_COLD = 4;
+	// Condition where temperature drops quickly and deeply below zero Celsius, causing rapid freezing of exposed water areas and water on roads.
+	EAW128_TEMPERATURE_FLASH_FREEZE = 5;
+
+	EAW128_TEMPERATURE_FROST = 6;
+
+	EAW128_TEMPERATURE_HEAT_WAVE = 7;
+	// High temperatures.
+	EAW128_TEMPERATURE_HEAT = 8;
+
+	EAW128_TEMPERATURE_EXTREME_HEAT = 9;
+	// Condition with high temperatures and high humidity.
+	EAW128_TEMPERATURE_HIGH_HEAT_AND_HUMIDITY = 10;
+	// Wind chill warning
+	EAW128_TEMPERATURE_WIND_CHILL = 11;
+	// Undefined sub event code, use main event code instead.
+	EAW128_TEMPERATURE_UNDEFINED = 255;
+}
+// This enumeration type provides more detailed event codes for test messages and exercises.
+enum Eaw129_TestMessage {
+
+	EAW129_TESTMESSAGE_UNKNOWN = 0;
+
+	EAW129_TESTMESSAGE_SIREN_TEST = 1;
+
+	EAW129_TESTMESSAGE_EXERCISE_WARNING = 2;
+	// Undefined sub event code, use main event code instead.
+	EAW129_TESTMESSAGE_UNDEFINED = 255;
+}
+// This enumeration type provides more detailed event codes for public utility or infrastructure systems related hazards.
+enum Eaw130_Utility {
+
+	EAW130_UTILITY_UNKNOWN = 0;
+	// Long distance communications service which is sending telegrams: short textual messages.
+	EAW130_UTILITY_CABLE_SERVICE = 1;
+	// Services provided by means of electronic signals over, for example, telecommunications or broadcasting networks.
+	EAW130_UTILITY_COMMUNICATIONS_SERVICE = 2;
+
+	EAW130_UTILITY_FAILURE_IT_SYSTEMS = 3;
+
+	EAW130_UTILITY_ATTACK_ON_IT_SYSTEMS = 4;
+
+	EAW130_UTILITY_POWER_OUTAGE = 5;
+
+	EAW130_UTILITY_DIESEL_SUPPLY = 6;
+	// Failure of electricity supply.
+	EAW130_UTILITY_ELECTRICITY_SUPPLY = 7;
+
+	EAW130_UTILITY_HEATING_OIL_SUPPLY = 8;
+
+	EAW130_UTILITY_GASOLINE_SUPPLY = 9;
+
+	EAW130_UTILITY_INTERNET_SERVICE = 10;
+	// Fixed-line telephony service
+	EAW130_UTILITY_LANDLINE_SERVICE = 11;
+	// Mobile telephony service.
+	EAW130_UTILITY_MOBILE_SERVICE = 12;
+
+	EAW130_UTILITY_NATURAL_GAS_SUPPLY = 13;
+
+	EAW130_UTILITY_NATURAL_GAS_SUPPLY_FAILURE = 14;
+
+	EAW130_UTILITY_PIPELINE_RUPTURE = 15;
+
+	EAW130_UTILITY_SATELLITE_COMMUNICATIONS_SERVICE = 16;
+
+	EAW130_UTILITY_SEWER_SYSTEM = 17;
+
+	EAW130_UTILITY_TELEPHONE_SERVICE = 18;
+
+	EAW130_UTILITY_TELECOMMUNICATIONS_FAILURE = 19;
+	// Public telephone service using a single emergency telephone number that allows a caller to contact local emergency services for assistance.
+	EAW130_UTILITY_EMERGENCY_COMMUNICATION_SERVICE = 20;
+	// Failure of emergency communication service.
+	EAW130_UTILITY_FAILURE_OF_EMERGENCY_COMMUNICATION_SERVICE = 21;
+
+	EAW130_UTILITY_WASTE_MANAGEMENT = 22;
+
+	EAW130_UTILITY_WATER_SUPPLY = 23;
+	// Undefined sub event code, use main event code instead.
+	EAW130_UTILITY_UNDEFINED = 255;
+}
+// This enumeration type provides more detailed event codes for wind related hazards.
+enum Eaw131_Wind {
+
+	EAW131_WIND_UNKNOWN = 0;
+	// Hazard due to a wind change.
+	EAW131_WIND_WIND_CHANGE = 1;
+	// Undefined sub event code, use main event code instead.
+	EAW131_WIND_UNDEFINED = 255;
+}
+// This enumeration type provides more detailed event codes for water quality related hazards.
+enum Eaw132_WaterQuality {
+
+	EAW132_WATERQUALITY_UNKNOWN = 0;
+	// Hazard due to blue green algae. Blue-green algal blooms are a major hazard to water supplies as well as potentially dangerous to human, animal and fish health.
+	EAW132_WATERQUALITY_BLUE_GREEN_ALGAE = 1;
+	// Undefined sub event code, use main event code instead.
+	EAW132_WATERQUALITY_UNDEFINED = 255;
+}
+
+message Eaw200_EawSubInstructionType {
+	oneof Eaw200_EawSubInstructionType_opt {
+		Eaw205_EnsureYourSafetyTakePrecautionsResidential eaw205_EnsureYourSafetyTakePrecautionsResidential = 1;
+		Eaw201_EnsureYourSafetyTakePrecautions eaw201_EnsureYourSafetyTakePrecautions = 2;
+		Eaw202_FollowInstructionsOfLocalAuthorities eaw202_FollowInstructionsOfLocalAuthorities = 3;
+		Eaw204_InformYourselfViaAllPossibleMedia eaw204_InformYourselfViaAllPossibleMedia = 4;
+		Eaw203_ExpectTravelDisruptionsInTheArea eaw203_ExpectTravelDisruptionsInTheArea = 5;
+	}
+}
+// This enumeration type is used to provide instructions targeting recipients in the affected area(s) to take applicable precautions for their safety.
+enum Eaw201_EnsureYourSafetyTakePrecautions {
+
+	EAW201_ENSUREYOURSAFETYTAKEPRECAUTIONS_UNKNOWN = 0;
+	// Recipients are instructed to follow their own judgement to take appropriate action to ensure their safety, no specific action is recommended.
+	EAW201_ENSUREYOURSAFETYTAKEPRECAUTIONS_NO_ACTION_TO_RECOMMEND = 1;
+	// Recipients are advised to stop in a safe place to read the detailed instructions.
+	EAW201_ENSUREYOURSAFETYTAKEPRECAUTIONS_STOP_IN_A_SAFE_PLACE_TO_READ_DETAILED_INSTRUCTIONS = 2;
+	// Recipients are instructed to evacuate the area immediately.
+	EAW201_ENSUREYOURSAFETYTAKEPRECAUTIONS_EVACUATE_THE_AREA = 3;
+	// Recipients are instructed to be prepared for an likely evacuation.
+	EAW201_ENSUREYOURSAFETYTAKEPRECAUTIONS_BE_PREPARED_TO_EVACUATE_AT_ANY_TIME = 4;
+	// Recipients are instructed to move to a safe shelter.
+	EAW201_ENSUREYOURSAFETYTAKEPRECAUTIONS_MOVE_TO_A_SAFE_SHELTER = 5;
+	// Recipients are advised to protect themselves for flying debris.
+	EAW201_ENSUREYOURSAFETYTAKEPRECAUTIONS_PROTECT_YOURSELF_FROM_FLYING_DEBRIS = 6;
+	// Recipients are instructed to stay away from damaged buildings and downed power lines.
+	EAW201_ENSUREYOURSAFETYTAKEPRECAUTIONS_STAY_AWAY_FROM_DAMAGED_BUILDINGS_AND_DOWNED_POWER_LINES = 7;
+	// Recipients are instructed to not cross fast flowing or rising waters.
+	EAW201_ENSUREYOURSAFETYTAKEPRECAUTIONS_DO_NOT_CROSS_FAST_FLOWING_OR_RISING_WATERS = 8;
+	// Recipients are instructed to not attempt drive or otherwise enter into flooded areas.
+	EAW201_ENSUREYOURSAFETYTAKEPRECAUTIONS_DO_NOT_CROSS_FLOODED_AREAS = 9;
+	// Recipients are instructed to move off the beach and out of harbours and marinas.
+	EAW201_ENSUREYOURSAFETYTAKEPRECAUTIONS_MOVE_OFF_THE_BEACH_AND_OUT_OF_HARBOURS_AND_MARINAS = 10;
+	// Recipients are instructed to avoid unnecessary travel.
+	EAW201_ENSUREYOURSAFETYTAKEPRECAUTIONS_AVOID_UNNECESSARY_TRAVEL = 11;
+	// Recipients are instructed to keep roads clear for rescue and emergency vehicles.
+	EAW201_ENSUREYOURSAFETYTAKEPRECAUTIONS_KEEP_ROADS_CLEAR_FOR_RESCUE_AND_EMERGENCY_VEHICLES = 12;
+	// Drivers are instructed take extra care, and adjust to the situation and hazards.
+	EAW201_ENSUREYOURSAFETYTAKEPRECAUTIONS_DRIVE_CAREFULLY = 13;
+	// Drivers are instructed to adjust their driving speed to the situation and hazards.
+	EAW201_ENSUREYOURSAFETYTAKEPRECAUTIONS_ADJUST_YOUR_DRIVING_SPEED = 14;
+	// Drivers are instructed to keep sufficient distance given the situation and hazards.
+	EAW201_ENSUREYOURSAFETYTAKEPRECAUTIONS_KEEP_SUFFICIENT_DISTANCE = 15;
+	// Drivers and passengers are instructed to stay in their vehicles.
+	EAW201_ENSUREYOURSAFETYTAKEPRECAUTIONS_DO_NOT_LEAVE_YOUR_VEHICLE = 16;
+	// Drivers and passengers are instructed to stay in their vehicles and keep the windows closed.
+	EAW201_ENSUREYOURSAFETYTAKEPRECAUTIONS_DO_NOT_LEAVE_YOUR_VEHICLE_CLOSE_WINDOWS = 17;
+	// Recipients are requested to turn of ventilation and A/C to minimise air intake from outside.
+	EAW201_ENSUREYOURSAFETYTAKEPRECAUTIONS_TURN_OFF_VENTILATION_AND_A_C = 18;
+	// Recipients are requested to avoid road travel, i.e. avoid making car journeys.
+	EAW201_ENSUREYOURSAFETYTAKEPRECAUTIONS_AVOID_ROAD_TRAVEL = 19;
+	// Recipients are instructed to immediately seek out higher ground.
+	EAW201_ENSUREYOURSAFETYTAKEPRECAUTIONS_IMMEDIATELY_SEEK_OUT_HIGHER_GROUND = 20;
+	// Recipients are instructed to protect themselves from the sun.
+	EAW201_ENSUREYOURSAFETYTAKEPRECAUTIONS_PROTECT_YOURSELF_FROM_THE_SUN = 21;
+	// Recipients are instructed to quickly move into interior rooms.
+	EAW201_ENSUREYOURSAFETYTAKEPRECAUTIONS_QUICKLY_MOVE_INTO_INTERIOR_ROOMS = 22;
+	// Recipients are informed that there is no danger; no action is needed.
+	EAW201_ENSUREYOURSAFETYTAKEPRECAUTIONS_THERE_IS_NO_DANGER = 23;
+
+	EAW201_ENSUREYOURSAFETYTAKEPRECAUTIONS_SEEK_SHELTER_IN_A_BUILDING = 24;
+
+	EAW201_ENSUREYOURSAFETYTAKEPRECAUTIONS_SEEK_SHELTER_IN_A_BUILDING_IMMEDIATELY = 25;
+
+	EAW201_ENSUREYOURSAFETYTAKEPRECAUTIONS_SEEK_SHELTER_IN_A_PLACE_WHERE_YOU_CANNOT_BE_HIT_BY_HAIL = 26;
+
+	EAW201_ENSUREYOURSAFETYTAKEPRECAUTIONS_SEEK_SHELTER_IF_YOU_CANNOT_LEAVE_THE_AREA_IMMEDIATELY = 27;
+
+	EAW201_ENSUREYOURSAFETYTAKEPRECAUTIONS_IF_A_BUILDING_IS_NEARBY_SEEK_SHELTER_IN_THAT_BUILDING = 28;
+
+	EAW201_ENSUREYOURSAFETYTAKEPRECAUTIONS_IF_YOU_CANNOT_REACH_A_BUILDING_LIE_FLAT_ON_THE_GROUND_AND_PROTECT_YOUR_HEAD_WITH_YOUR_HANDS = 29;
+
+	EAW201_ENSUREYOURSAFETYTAKEPRECAUTIONS_IF_YOU_CANNOT_FIND_SHELTER_LIE_FACE_DOWN_ON_THE_GROUND_AND_PROTECT_YOUR_HEAD_AND_NECK_WITH_YOUR_HANDS = 30;
+
+	EAW201_ENSUREYOURSAFETYTAKEPRECAUTIONS_IF_YOU_ARE_IN_OPEN_TERRAIN_CROUCH_ON_THE_BALLS_OF_YOUR_FEET_WITH_YOUR_FEET_CLOSE_TOGETHER_IN_A_HOLLOW_WHERE_POSSIBLE = 31;
+
+	EAW201_ENSUREYOURSAFETYTAKEPRECAUTIONS_TAKE_COVER_AND_WAIT_UNTIL_THE_EARTHQUAKE_IS_OVER = 32;
+
+	EAW201_ENSUREYOURSAFETYTAKEPRECAUTIONS_HIDE = 33;
+
+	EAW201_ENSUREYOURSAFETYTAKEPRECAUTIONS_LEAVE_THE_AREA_IMMEDIATELY = 34;
+
+	EAW201_ENSUREYOURSAFETYTAKEPRECAUTIONS_LEAVE_THE_IMPACT_SITE_IMMEDIATELY = 35;
+
+	EAW201_ENSUREYOURSAFETYTAKEPRECAUTIONS_MOVE_WHEREVER_POSSIBLE_AT_A_RIGHT_ANGLE_TO_THE_WIND_DIRECTION = 36;
+
+	EAW201_ENSUREYOURSAFETYTAKEPRECAUTIONS_DO_NOT_TOUCH_ANY_DEBRIS = 37;
+
+	EAW201_ENSUREYOURSAFETYTAKEPRECAUTIONS_DO_NOT_TOUCH_ANY_DEAD_ANIMALS = 38;
+
+	EAW201_ENSUREYOURSAFETYTAKEPRECAUTIONS_DO_NOT_TOUCH_ANY_SUSPICIOUS_OBJECTS = 39;
+
+	EAW201_ENSUREYOURSAFETYTAKEPRECAUTIONS_KEEP_AWAY_FROM_TREES_AND_BUILDINGS_FROM_WHICH_ROOF_AVALANCHES_CAN_COME_LOOSE = 40;
+
+	EAW201_ENSUREYOURSAFETYTAKEPRECAUTIONS_KEEP_AWAY_FROM_TREES_AND_POWER_LINES = 41;
+
+	EAW201_ENSUREYOURSAFETYTAKEPRECAUTIONS_KEEP_AWAY_FROM_CREVICES_AND_SLOPES = 42;
+
+	EAW201_ENSUREYOURSAFETYTAKEPRECAUTIONS_KEEP_AWAY_FROM_AFFECTED_FARMS = 43;
+
+	EAW201_ENSUREYOURSAFETYTAKEPRECAUTIONS_KEEP_A_SUFFICIENT_DISTANCE_FROM_THE_BUILDING = 44;
+
+	EAW201_ENSUREYOURSAFETYTAKEPRECAUTIONS_IF_THERE_IS_A_RISK_OF_FLOODING_DO_NOT_ENTER_CELLARS_OR_UNDERGROUND_CAR_PARKS = 45;
+
+	EAW201_ENSUREYOURSAFETYTAKEPRECAUTIONS_DO_NOT_GO_NEAR_FLOODED_WATERS = 46;
+
+	EAW201_ENSUREYOURSAFETYTAKEPRECAUTIONS_DO_NOT_DRIVE_THROUGH_FLOODED_ROADS = 47;
+
+	EAW201_ENSUREYOURSAFETYTAKEPRECAUTIONS_CLOSE_ALL_WINDOWS = 48;
+
+	EAW201_ENSUREYOURSAFETYTAKEPRECAUTIONS_CLOSE_ALL_WINDOWS_AND_DOORS = 49;
+
+	EAW201_ENSUREYOURSAFETYTAKEPRECAUTIONS_EXIT_THE_VEHICLE = 50;
+
+	EAW201_ENSUREYOURSAFETYTAKEPRECAUTIONS_IF_YOU_CANNOT_EXIT_THE_VEHICLE_LOWER_YOUR_HEAD_AND_PROTECT_IT_WITH_YOUR_HANDS = 51;
+
+	EAW201_ENSUREYOURSAFETYTAKEPRECAUTIONS_COVER_YOUR_MOUTH_AND_NOSE_WITH_IMPROVISED_RESPIRATORY_PROTECTION_CLOTH_GARMENT_SURGICAL_MASK = 52;
+
+	EAW201_ENSUREYOURSAFETYTAKEPRECAUTIONS_HAVE_IODINE_TABLETS_READY_DO_NOT_TAKE_THE_IODINE_TABLETS_NOW = 53;
+
+	EAW201_ENSUREYOURSAFETYTAKEPRECAUTIONS_TAKE_THE_IODINE_TABLETS_NOW_ACCORDING_TO_THE_INSTRUCTIONS = 54;
+
+	EAW201_ENSUREYOURSAFETYTAKEPRECAUTIONS_DO_NOT_DRINK_ANY_TAP_WATER = 55;
+
+	EAW201_ENSUREYOURSAFETYTAKEPRECAUTIONS_ONLY_DRINK_MINERAL_WATER_FROM_A_BOTTLE = 56;
+
+	EAW201_ENSUREYOURSAFETYTAKEPRECAUTIONS_PROTECT_YOURSELF_FROM_DIRECT_SUNLIGHT = 57;
+
+	EAW201_ENSUREYOURSAFETYTAKEPRECAUTIONS_BE_PREPARED_FOR_AFTERSHOCKS = 58;
+	// Undefined sub instruction code, use main instruction code instead.
+	EAW201_ENSUREYOURSAFETYTAKEPRECAUTIONS_UNDEFINED = 255;
+}
+// This enumeration type is used to provide instructions targeting recipients in the affected area(s) to follow applicable instructions of the local authorities.
+enum Eaw202_FollowInstructionsOfLocalAuthorities {
+
+	EAW202_FOLLOWINSTRUCTIONSOFLOCALAUTHORITIES_UNKNOWN = 0;
+	// Situations determine that driving is not allowed. Drivers should stop at the first place where it is safe to do so.
+	EAW202_FOLLOWINSTRUCTIONSOFLOCALAUTHORITIES_DRIVING_NOT_ALLOWED = 1;
+	// Driving is not allowed; drivers should stop at the first place where it is safe to do so.
+	EAW202_FOLLOWINSTRUCTIONSOFLOCALAUTHORITIES_STOP_VEHICLE_AT_NEXT_POSSIBLE_PLACE = 2;
+	// Driving is not allowed; drivers should stop at the next available parking place.
+	EAW202_FOLLOWINSTRUCTIONSOFLOCALAUTHORITIES_DRIVE_TO_NEXT_AVAILABLE_PARKING_PLACE = 3;
+	// Vehicles are required to wait for a police patrol before continuing on their journey.
+	EAW202_FOLLOWINSTRUCTIONSOFLOCALAUTHORITIES_WAIT_FOR_POLICE_PATROL = 4;
+	// Police are directing traffic; travellers should follow their instructions
+	EAW202_FOLLOWINSTRUCTIONSOFLOCALAUTHORITIES_FOLLOW_POLICE_INSTRUCTIONS = 5;
+	// Travelers are instructed to follow designated evacuation routes, and not divert from these.
+	EAW202_FOLLOWINSTRUCTIONSOFLOCALAUTHORITIES_FOLLOW_EVACUATION_ROUTES = 6;
+	// Be prepared to follow orders of local authorities to evacuate the affected area(s).
+	EAW202_FOLLOWINSTRUCTIONSOFLOCALAUTHORITIES_FOLLOW_ORDERS_TO_EVACUATE_WHEN_INSTRUCTED = 7;
+	// Recipients are instructed not to throw away any burning cigarettes.
+	EAW202_FOLLOWINSTRUCTIONSOFLOCALAUTHORITIES_DO_NOT_THROW_AWAY_ANY_BURNING_CIGARETTES = 8;
+
+	EAW202_FOLLOWINSTRUCTIONSOFLOCALAUTHORITIES_DO_NOT_THROW_AWAY_ANY_BURNING_CIGARETTES_OR_MATCHES = 9;
+
+	EAW202_FOLLOWINSTRUCTIONSOFLOCALAUTHORITIES_FOLLOW_THE_INSTRUCTIONS_OF_THE_EMERGENCY_SERVICES = 10;
+
+	EAW202_FOLLOWINSTRUCTIONSOFLOCALAUTHORITIES_USE_PUBLIC_TRANSPORT = 11;
+
+	EAW202_FOLLOWINSTRUCTIONSOFLOCALAUTHORITIES_STOP_ON_THE_HARD_SHOULDER_OR_ON_THE_EDGE_OF_THE_ROAD = 12;
+
+	EAW202_FOLLOWINSTRUCTIONSOFLOCALAUTHORITIES_IF_YOU_ARE_IN_A_VEHICLE_STOP_ON_THE_HARD_SHOULDER_OR_ON_THE_EDGE_OF_THE_ROAD = 13;
+
+	EAW202_FOLLOWINSTRUCTIONSOFLOCALAUTHORITIES_WARN_OTHER_PEOPLE_ASK_THEM_TO_FLEE = 14;
+
+	EAW202_FOLLOWINSTRUCTIONSOFLOCALAUTHORITIES_WARN_OTHER_PEOPLE_TO_PREVENT_THEM_FROM_ENTERING_THE_DANGER_ZONE = 15;
+
+	EAW202_FOLLOWINSTRUCTIONSOFLOCALAUTHORITIES_KEEP_ALL_ACCESS_ROUTES_TO_THE_SCENE_OF_THE_FIRE_CLEAR = 16;
+
+	EAW202_FOLLOWINSTRUCTIONSOFLOCALAUTHORITIES_INFORM_THE_EMERGENCY_SERVICES_OF_THE_LOCATION_OF_THE_SUSPICIOUS_OBJECTS = 17;
+
+	EAW202_FOLLOWINSTRUCTIONSOFLOCALAUTHORITIES_IF_YOU_HAVE_MADE_ANY_RELEVANT_OBSERVATIONS_INFORM_THE_POLICE = 18;
+
+	EAW202_FOLLOWINSTRUCTIONSOFLOCALAUTHORITIES_INFORM_THE_EMERGENCY_SERVICES_ABOUT_DAMAGE_AND_DEBRIS = 19;
+
+	EAW202_FOLLOWINSTRUCTIONSOFLOCALAUTHORITIES_REPORT_ANY_FINDINGS_OF_DEAD_WILD_ANIMALS_TO_THE_AUTHORITIES = 20;
+
+	EAW202_FOLLOWINSTRUCTIONSOFLOCALAUTHORITIES_FIND_OUT_THE_LOCATION_OF_THE_INFORMATION_POINTS_SET_UP_BY_THE_AUTHORITIES = 21;
+
+	EAW202_FOLLOWINSTRUCTIONSOFLOCALAUTHORITIES_APPROACH_POLICE_FORCES_IN_A_CALM_AND_REASONABLE_MANNER_KEEP_YOUR_HANDS_UP = 22;
+
+	EAW202_FOLLOWINSTRUCTIONSOFLOCALAUTHORITIES_ONLY_CALL_THE_EMERGENCY_NUMBERS_OF_THE_POLICE_AND_FIRE_BRIGADES_IN_EMERGENCIES = 23;
+
+	EAW202_FOLLOWINSTRUCTIONSOFLOCALAUTHORITIES_ONLY_MAKE_PHONE_CALLS_IN_SERIOUS_EMERGENCIES_TO_AVOID_OVERLOADING_THE_TELEPHONE_NETWORK = 24;
+
+	EAW202_FOLLOWINSTRUCTIONSOFLOCALAUTHORITIES_OBSERVE_THE_QUARANTINE_MEASURES_BY_THE_AUTHORITIES = 25;
+	// Undefined sub instruction code, use main instruction code instead.
+	EAW202_FOLLOWINSTRUCTIONSOFLOCALAUTHORITIES_UNDEFINED = 255;
+}
+// This enumeration type is used to provide instructions targeting recipients outside the affected area(s) to (re)consider their itineraries as travel may be difficult or restricted in the affected area(s).
+enum Eaw203_ExpectTravelDisruptionsInTheArea {
+
+	EAW203_EXPECTTRAVELDISRUPTIONSINTHEAREA_UNKNOWN = 0;
+	// Used to instruct the recipients that the affected area(s) should be avoided.
+	EAW203_EXPECTTRAVELDISRUPTIONSINTHEAREA_AVOID_THE_AREA = 1;
+	// Used to instruct the recipients that the affected area(s) should be circumnavigated.
+	EAW203_EXPECTTRAVELDISRUPTIONSINTHEAREA_DETOUR_THE_AREA = 2;
+	// Used to instruct the recipients that the affected area(s) should be circumnavigated widely.
+	EAW203_EXPECTTRAVELDISRUPTIONSINTHEAREA_DETOUR_THE_AREA_BY_A_WIDE_MARGIN = 3;
+	// Used to instruct the recipients that they should give priority to travellers attempting to leave the affected area(s) and avoid evacuation routes.
+	EAW203_EXPECTTRAVELDISRUPTIONSINTHEAREA_GIVE_PRIORITY_TO_TRAVELLERS_EVACUATING_THE_AREA = 4;
+	// Used to instruct the recipients that they should expect travel restrictions in the affected area(s) which may impact their itinerary.
+	EAW203_EXPECTTRAVELDISRUPTIONSINTHEAREA_EXPECT_TRAVEL_RESTRICTIONS_IN_THE_AREA = 5;
+	// Used to instruct the recipients that they should expect travel problems in the affected area(s) which may impact  their itinerary.
+	EAW203_EXPECTTRAVELDISRUPTIONSINTHEAREA_EXPECT_TRAVEL_PROBLEMS_IN_THE_AREA = 6;
+	// Undefined sub instruction code, use main instruction code instead.
+	EAW203_EXPECTTRAVELDISRUPTIONSINTHEAREA_UNDEFINED = 255;
+}
+// This enumeration type is used to provide instructions targeting all recipients to inform themselves on the actual situation and updates thereof.
+enum Eaw204_InformYourselfViaAllPossibleMedia {
+
+	EAW204_INFORMYOURSELFVIAALLPOSSIBLEMEDIA_UNKNOWN = 0;
+	// Used to instruct recipients to obtain further detailed information via the radio.
+	EAW204_INFORMYOURSELFVIAALLPOSSIBLEMEDIA_SWITCH_ON_RADIO = 1;
+	// Used to instruct recipients to be alert that further detailed information and updates may follow.
+	EAW204_INFORMYOURSELFVIAALLPOSSIBLEMEDIA_BE_ALERT_TO_FURTHER_INFORMATION = 2;
+	// Used to instruct recipients to monitor the situation carefully, as e.g. the situation may be changing rapidly.
+	EAW204_INFORMYOURSELFVIAALLPOSSIBLEMEDIA_MONITOR_THE_SITUATION_CAREFULLY = 3;
+	// Used to instruct recipients to obtain further detailed information via regional radio stations.
+	EAW204_INFORMYOURSELFVIAALLPOSSIBLEMEDIA_LISTEN_TO_REGIONAL_RADIO_STATIONS = 4;
+
+	EAW204_INFORMYOURSELFVIAALLPOSSIBLEMEDIA_SWITCH_ON_THE_CAR_RADIO_AND_LISTEN_FOR_FURTHER_INFORMATION = 5;
+
+	EAW204_INFORMYOURSELFVIAALLPOSSIBLEMEDIA_GET_INFORMATION_FROM_THE_MEDIA_FOR_EXAMPLE_ON_LOCAL_RADIO = 6;
+
+	EAW204_INFORMYOURSELFVIAALLPOSSIBLEMEDIA_PAY_ATTENTION_TO_ANNOUNCEMENTS_MADE_BY_THE_POLICE_AND_FIRE_BRIGADE = 7;
+
+	EAW204_INFORMYOURSELFVIAALLPOSSIBLEMEDIA_WE_WILL_INFORM_YOU_WHEN_THE_DANGER_HAS_PASSED = 8;
+	// Undefined sub instruction code, use main instruction code instead.
+	EAW204_INFORMYOURSELFVIAALLPOSSIBLEMEDIA_UNDEFINED = 255;
+}
+// This enumeration type is used to provide instructions targeting residential recipients in the affected area(s) to take applicable precautions for their safety.
+enum Eaw205_EnsureYourSafetyTakePrecautionsResidential {
+
+	EAW205_ENSUREYOURSAFETYTAKEPRECAUTIONSRESIDENTIAL_UNKNOWN = 0;
+
+	EAW205_ENSUREYOURSAFETYTAKEPRECAUTIONSRESIDENTIAL_INFORM_YOUR_NEIGHBOURS = 1;
+
+	EAW205_ENSUREYOURSAFETYTAKEPRECAUTIONSRESIDENTIAL_PROVIDE_FIRST_AID_IF_NECESSARY_BUT_DO_NOT_PUT_YOURSELF_IN_ANY_DANGER = 2;
+
+	EAW205_ENSUREYOURSAFETYTAKEPRECAUTIONSRESIDENTIAL_HELP_CHILDREN_AND_OTHER_PEOPLE_IN_NEED_BUT_DO_NOT_PUT_YOURSELF_AT_RISK = 3;
+
+	EAW205_ENSUREYOURSAFETYTAKEPRECAUTIONSRESIDENTIAL_TAKE_ONLY_THE_ESSENTIALS_WITH_YOU_ESPECIALLY_ID_CARDS_AND_CASH = 4;
+
+	EAW205_ENSUREYOURSAFETYTAKEPRECAUTIONSRESIDENTIAL_IF_YOU_NEED_HELP_LEAVING_YOUR_HOME_CONTACT_YOUR_CITY_USING_THE_TELEPHONE_NUMBER_PROVIDED = 5;
+
+	EAW205_ENSUREYOURSAFETYTAKEPRECAUTIONSRESIDENTIAL_CLOSE_ALL_WINDOWS_AND_SHUTTERS_AND_KEEP_AWAY_FROM_UNPROTECTED_OPENINGS = 6;
+
+	EAW205_ENSUREYOURSAFETYTAKEPRECAUTIONSRESIDENTIAL_STAY_IN_THE_BUILDING_AND_AWAIT_INSTRUCTIONS = 7;
+
+	EAW205_ENSUREYOURSAFETYTAKEPRECAUTIONSRESIDENTIAL_AVOID_GOING_OUTDOORS = 8;
+
+	EAW205_ENSUREYOURSAFETYTAKEPRECAUTIONSRESIDENTIAL_WATCH_OUT_FOR_FLYING_OBJECTS = 9;
+
+	EAW205_ENSUREYOURSAFETYTAKEPRECAUTIONSRESIDENTIAL_AVOID_ROOMS_DIRECTLY_UNDERNEATH_THE_ROOF_TRUSS = 10;
+
+	EAW205_ENSUREYOURSAFETYTAKEPRECAUTIONSRESIDENTIAL_AVOID_VERY_LARGE_ROOMS_SUCH_AS_HALLS_IN_WHICH_THE_CEILING_IS_NOT_SUPPORTED_BY_PILLARS = 11;
+
+	EAW205_ENSUREYOURSAFETYTAKEPRECAUTIONSRESIDENTIAL_DISCONNECT_SENSITIVE_EQUIPMENT_FROM_THE_MAINS = 12;
+
+	EAW205_ENSUREYOURSAFETYTAKEPRECAUTIONSRESIDENTIAL_AVOID_ALL_ITEMS_WITH_METAL_PARTS_SUCH_AS_UMBRELLAS_AND_BICYCLES = 13;
+
+	EAW205_ENSUREYOURSAFETYTAKEPRECAUTIONSRESIDENTIAL_DO_NOT_BATHE_OR_SHOWER_DURING_A_THUNDERSTORM = 14;
+
+	EAW205_ENSUREYOURSAFETYTAKEPRECAUTIONSRESIDENTIAL_DO_NOT_LEAVE_PETS_OR_LIVESTOCK_OUTSIDE = 15;
+
+	EAW205_ENSUREYOURSAFETYTAKEPRECAUTIONSRESIDENTIAL_MOVE_TO_HIGHER_PARTS_OF_THE_BUILDING = 16;
+
+	EAW205_ENSUREYOURSAFETYTAKEPRECAUTIONSRESIDENTIAL_MOVE_PERSONAL_VALUABLES_INTO_HIGHER_PARTS_OF_THE_BUILDING = 17;
+
+	EAW205_ENSUREYOURSAFETYTAKEPRECAUTIONSRESIDENTIAL_TURN_OFF_THE_GAS_WATER_AND_ELECTRICITY_SUPPLY = 18;
+
+	EAW205_ENSUREYOURSAFETYTAKEPRECAUTIONSRESIDENTIAL_TURN_OFF_ALL_GAS_LINES = 19;
+
+	EAW205_ENSUREYOURSAFETYTAKEPRECAUTIONSRESIDENTIAL_SWITCH_OFF_THE_ELECTRICITY_AND_HEATING_IN_ROOMS_THAT_ARE_AT_RISK = 20;
+
+	EAW205_ENSUREYOURSAFETYTAKEPRECAUTIONSRESIDENTIAL_SWITCH_OFF_THE_ELECTRICITY_GAS_AND_HEATING_IN_ROOMS_THAT_ARE_AT_RISK = 21;
+
+	EAW205_ENSUREYOURSAFETYTAKEPRECAUTIONSRESIDENTIAL_IF_THE_JUNCTION_BOX_IS_LOCATED_IN_A_FLOODED_ROOM_DO_NOT_ENTER_IT_BUT_INSTEAD_INFORM_THE_FIRE_BRIGADE = 22;
+
+	EAW205_ENSUREYOURSAFETYTAKEPRECAUTIONSRESIDENTIAL_DO_NOT_SWIM_IN_FLOODED_STREETS_NOR_WALK_THROUGH_FLOODED_UNDERPASSES = 23;
+
+	EAW205_ENSUREYOURSAFETYTAKEPRECAUTIONSRESIDENTIAL_KEEP_DRAINS_AND_SHAFTS_CLEAR_SO_THAT_THE_WATER_CAN_DRAIN_AWAY = 24;
+
+	EAW205_ENSUREYOURSAFETYTAKEPRECAUTIONSRESIDENTIAL_IF_POSSIBLE_MOVE_INTO_SAFE_ROOMS_IN_THE_BUILDING_ON_THE_SIDE_FACING_AWAY_FROM_THE_SLOPE = 25;
+
+	EAW205_ENSUREYOURSAFETYTAKEPRECAUTIONSRESIDENTIAL_BE_AWARE_OF_ADDITIONAL_HAZARDS_EG_ELECTRICITY = 26;
+
+	EAW205_ENSUREYOURSAFETYTAKEPRECAUTIONSRESIDENTIAL_WATCH_OUT_FOR_ESCAPING_GAS = 27;
+
+	EAW205_ENSUREYOURSAFETYTAKEPRECAUTIONSRESIDENTIAL_IF_POSSIBLE_STAY_IN_COOL_ROOMS_AND_BUILDINGS = 28;
+
+	EAW205_ENSUREYOURSAFETYTAKEPRECAUTIONSRESIDENTIAL_AVOID_DOING_ACTIVITIES_AND_SPENDING_PROLONGED_PERIODS_OUTDOORS = 29;
+
+	EAW205_ENSUREYOURSAFETYTAKEPRECAUTIONSRESIDENTIAL_WEAR_SUNGLASSES_WITH_100_UV_PROTECTION_OUTDOORS = 30;
+
+	EAW205_ENSUREYOURSAFETYTAKEPRECAUTIONSRESIDENTIAL_DRINK_PLENTY_OF_WATER_AND_MAKE_SURE_YOU_EAT_LIGHT_FOOD = 31;
+
+	EAW205_ENSUREYOURSAFETYTAKEPRECAUTIONSRESIDENTIAL_BOIL_WATER_BEFORE_DRINKING_IT_OR_USING_IT_IN_THE_KITCHEN = 32;
+
+	EAW205_ENSUREYOURSAFETYTAKEPRECAUTIONSRESIDENTIAL_AVOID_ANY_SKIN_CONTACT_WITH_TAP_WATER_TURN_OFF_THE_WATER_SUPPLY_TO_YOUR_HOUSE = 33;
+
+	EAW205_ENSUREYOURSAFETYTAKEPRECAUTIONSRESIDENTIAL_TEMPORARILY_TAKE_IN_ANY_ENDANGERED_PERSONS = 34;
+
+	EAW205_ENSUREYOURSAFETYTAKEPRECAUTIONSRESIDENTIAL_STAY_AWAY_FROM_GLASS_SURFACES_SUCH_AS_WINDOWS_AND_GLASS_DOORS = 35;
+
+	EAW205_ENSUREYOURSAFETYTAKEPRECAUTIONSRESIDENTIAL_LEAVE_DAMAGED_BUILDINGS_IMMEDIATELY_BEWARE_OF_FALLING_OBJECTS = 36;
+
+	EAW205_ENSUREYOURSAFETYTAKEPRECAUTIONSRESIDENTIAL_DO_NOT_USE_ANY_LIFTS = 37;
+
+	EAW205_ENSUREYOURSAFETYTAKEPRECAUTIONSRESIDENTIAL_PREPARE_FOR_A_POSSIBLE_POWER_OUTAGE_CHECK_YOUR_SUPPLIES_OF_WATER_FOOD_CASH_BATTERIES_AND_MEDICINE = 38;
+
+	EAW205_ENSUREYOURSAFETYTAKEPRECAUTIONSRESIDENTIAL_USE_BICYCLE_OR_MOTORCYCLE_HELMETS_TO_PROTECT_YOUR_HEAD_FROM_FALLING_ROCKS = 39;
+
+	EAW205_ENSUREYOURSAFETYTAKEPRECAUTIONSRESIDENTIAL_STAY_IN_THE_BUILDING_AND_AWAIT_FURTHER_INFORMATION = 40;
+
+	EAW205_ENSUREYOURSAFETYTAKEPRECAUTIONSRESIDENTIAL_DO_NOT_ENTER_SMOKE_FILLED_ROOMS = 41;
+
+	EAW205_ENSUREYOURSAFETYTAKEPRECAUTIONSRESIDENTIAL_DO_NOT_MAKE_A_FIRE_OUTDOORS = 42;
+
+	EAW205_ENSUREYOURSAFETYTAKEPRECAUTIONSRESIDENTIAL_USE_PERMANENT_FIREPLACES_WHEN_BARBECUING_MAKE_SURE_YOUR_FIRE_IS_COMPLETELY_EXTINGUISHED_BEFORE_YOU_LEAVE = 43;
+
+	EAW205_ENSUREYOURSAFETYTAKEPRECAUTIONSRESIDENTIAL_DO_NOT_LIGHT_ANY_FIREWORKS = 44;
+
+	EAW205_ENSUREYOURSAFETYTAKEPRECAUTIONSRESIDENTIAL_ONLY_LIGHT_FIREWORKS_WITH_THE_PERMISSION_OF_THE_MUNICIPALITY_KEEP_A_SAFE_DISTANCE_FROM_THE_FOREST_AND_HAVE_WATER_AT_HAND = 45;
+
+	EAW205_ENSUREYOURSAFETYTAKEPRECAUTIONSRESIDENTIAL_THE_FAULT_WILL_BE_RECTIFIED_AS_SOON_AS_POSSIBLE = 46;
+
+	EAW205_ENSUREYOURSAFETYTAKEPRECAUTIONSRESIDENTIAL_THE_POWER_SUPPLY_WILL_BE_RESTORED_AS_QUICKLY_AS_POSSIBLE = 47;
+
+	EAW205_ENSUREYOURSAFETYTAKEPRECAUTIONSRESIDENTIAL_REDUCE_YOUR_POWER_CONSUMPTION_USING_BATTERIES_TO_A_MINIMUM = 48;
+
+	EAW205_ENSUREYOURSAFETYTAKEPRECAUTIONSRESIDENTIAL_SWITCH_OFF_ALL_MAINS_OPERATED_DEVICES = 49;
+
+	EAW205_ENSUREYOURSAFETYTAKEPRECAUTIONSRESIDENTIAL_REDUCE_YOUR_WATER_CONSUMPTION_TO_A_MINIMUM = 50;
+
+	EAW205_ENSUREYOURSAFETYTAKEPRECAUTIONSRESIDENTIAL_GET_BATTERIES_FOR_TORCHES_AND_RADIOS = 51;
+
+	EAW205_ENSUREYOURSAFETYTAKEPRECAUTIONSRESIDENTIAL_CHECK_AND_RESTOCK_YOUR_EQUIPMENT_AND_SUPPLIES_OF_WATER_FOOD_MEDICINE_CASH_AND_BATTERIES = 52;
+
+	EAW205_ENSUREYOURSAFETYTAKEPRECAUTIONSRESIDENTIAL_QUICKLY_MOVE_INTO_INTERIOR_ROOMS = 53;
+
+	EAW205_ENSUREYOURSAFETYTAKEPRECAUTIONSRESIDENTIAL_IMMEDIATELY_MOVE_INTO_AN_UNDERGROUND_OR_INTERIOR_ROOM_WITH_AS_FEW_EXTERIOR_WALLS_WINDOWS_AND_DOORS_AS_POSSIBLE = 54;
+
+	EAW205_ENSUREYOURSAFETYTAKEPRECAUTIONSRESIDENTIAL_AVOID_PARTS_OF_BUILDINGS_WITH_GLASS_SURFACES = 55;
+
+	EAW205_ENSUREYOURSAFETYTAKEPRECAUTIONSRESIDENTIAL_LIE_ON_THE_FLOOR_AWAY_FROM_WINDOWS_AND_DOORS = 56;
+
+	EAW205_ENSUREYOURSAFETYTAKEPRECAUTIONSRESIDENTIAL_LIE_FLAT_ON_THE_FLOOR_AND_PROTECT_YOUR_HEAD_WITH_YOUR_HANDS = 57;
+
+	EAW205_ENSUREYOURSAFETYTAKEPRECAUTIONSRESIDENTIAL_SEEK_OUT_A_CELLAR_OR_INTERIOR_ROOM_ON_LOWER_FLOORS = 58;
+
+	EAW205_ENSUREYOURSAFETYTAKEPRECAUTIONSRESIDENTIAL_PREGNANT_WOMEN_AND_CHILDREN_SHOULD_STAY_IN_CLOSED_ROOMS = 59;
+
+	EAW205_ENSUREYOURSAFETYTAKEPRECAUTIONSRESIDENTIAL_BEFORE_ENTERING_THE_BUILDING_TAKE_OFF_YOUR_OUTER_CLOTHING_AND_SHOES_AND_LEAVE_THEM_OUTSIDE_THE_BUILDING = 60;
+
+	EAW205_ENSUREYOURSAFETYTAKEPRECAUTIONSRESIDENTIAL_WASH_YOUR_HANDS_FIRST_THEN_YOUR_FACE_HAIR_NOSE_AND_EARS = 61;
+
+	EAW205_ENSUREYOURSAFETYTAKEPRECAUTIONSRESIDENTIAL_IF_POSSIBLE_ALWAYS_DISINFECT_YOUR_HANDS_AFTER_CONTACT_WITH_POSSIBLE_PATHOGENS = 62;
+
+	EAW205_ENSUREYOURSAFETYTAKEPRECAUTIONSRESIDENTIAL_WASH_YOUR_HANDS_REGULARLY_AND_THOROUGHLY = 63;
+
+	EAW205_ENSUREYOURSAFETYTAKEPRECAUTIONSRESIDENTIAL_KEEP_A_SAFE_DISTANCE_TO_ANY_CONVERSATION_PARTNER = 64;
+
+	EAW205_ENSUREYOURSAFETYTAKEPRECAUTIONSRESIDENTIAL_AVOID_PHYSICAL_CONTACT_WITH_OTHER_PEOPLE_SUCH_AS_KISSING_AND_SHAKING_HANDS = 65;
+
+	EAW205_ENSUREYOURSAFETYTAKEPRECAUTIONSRESIDENTIAL_AVOID_GROUP_ACTIVITIES_SUCH_AS_TEAM_SPORTS = 66;
+	// Undefined sub instruction code, use main instruction code instead.
+	EAW205_ENSUREYOURSAFETYTAKEPRECAUTIONSRESIDENTIAL_UNDEFINED = 255;
+}

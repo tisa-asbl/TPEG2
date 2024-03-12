@@ -1,0 +1,533 @@
+syntax = "proto3";
+
+package tpeg.emi;
+import "TPEG/LRC_3_0.proto";
+import "TPEG/MMC_1_1.proto";
+
+import "TPEG/TPEGDataTypes_2_1.proto";
+// The plug type for the connector.
+message ConnectorType {
+	// EMI internal identifier for a connector type. Within a Charging Station (identified by the combination of parkID_Key and stationID_Key) the connectorTypeID_Key uniquely identifies a connector type with its attributes. The identifier is also used in the Charging Station Availability.
+	uint32 connectorTypeID_Key = 1;
+
+	Emi012_PlugType plugType = 2;
+	// If set to false, it is not known if a cable is attached or not. If set to true, please check the isCableAttached attribute.
+	bool isCableAttachedKnown = 3;
+	// This attribute is used if and only if isCableAttachedKnown is set to true. Information on a cable attached to the connector. If set to true, then a cable is attached. If set to false, then there is no cable attached.
+	bool isCableAttached = 4;
+	// Maximum voltage for this connector type.
+	optional uint32 maxVoltage = 5;
+	// Maximum ampere for this connector type.
+	optional uint32 maxAmpere = 6;
+	// Maximum power for this connector type.
+	optional uint32 maxPower = 7;
+}
+// Abstract container to allow the usage of the different Message Management Options.
+message MMCSwitch {
+	oneof MMCSwitch_opt {
+		tpeg.mmc.MMCMessagePart mMCMessagePart = 1;
+		tpeg.mmc.MMCMasterMessage mMCMasterMessage = 2;
+		tpeg.mmc.MessageManagementContainer messageManagementContainer = 3;
+	}
+}
+// The overall EMI message container.
+message EMIMessage {
+	// This component is specified in the MMC specification. It contains all and only information related to message management.
+	// The sender side, especially the instance generating the transmission data has to ensure that the message management information allows unambiguous interpretation over time and in appropriate scenarios with disturbed reception specific to the transmission channel.
+	MMCSwitch mmt = 100;
+	// This component groups information on the availability of Charging Stations in one or more Charging Parks. This may be highly dynamic information.
+	repeated ChargingParkAvailabilityVector chargingParkAvailabilityVector = 101;
+	// Component to transmit static information on a Charging Park. This component may be sent with a low repetition rate.
+	optional ChargingParkInformation chargingParkInformation = 102;
+	// Component to transmit the response to a Reservation Request.
+	optional ReservationResponse reservationResponse = 103;
+	// Detailed geolocation referencing information for Charging Park entry, Charging Park exit or single Charging Stations.
+	optional DetailedChargingParkLocation detailedChargingParkLocation = 104;
+	// Geographic coverage location reference for a Charging Park. Not applicable for Availability Vector
+	optional tpeg.lrc.LocationReferencingContainer chargingParkLocation = 105;
+	// Component to transmit a Reservation Request.
+	optional ReservationRequest reservationRequest = 106;
+}
+// This component groups information on the availability of charging stations within one or more Charging Parks. This may be highly dynamic information.
+message ChargingParkAvailabilityVector {
+	// Provides timing information for the latest valid information on the availability of charging places at a Charging Park
+	fixed32 timeStamp = 1;
+	// Information on the availability of charging places at a specific Charging Park. Optionally, the availability information may be broken down to the level of Charging Stations.
+	repeated ChargingParkAvailability chargingParkAvailability = 2;
+	// Description of Charging Parks belonging to this vector (e.g. all charging parks in Garmisch-Partenkirchen)
+	optional string vectorLabel = 3;
+}
+// Component to transmit largely static information on a Charging Park. This component can be sent with a low repetition rate.
+message ChargingParkInformation {
+	// EMI internal identifier for a Charging Park. The parkID_Key shall be used by an end user device or application  to combine Charging Park Information, Detailed Charging Park Location and ChargingParkAvailability data and optionally the ReservationResponse.
+	uint32 parkID_Key = 1;
+	// Further background information on this Charging Park.
+	ChargingParkSiteDescription chargingParkSiteDescription = 2;
+	// Total number of available charging places at this Charging Park.
+	optional uint32 chargingParkCapacity = 3;
+	// Identifier for the electricity provided at this Charging Park e.g. by which (renewable) energy source the electricity is generated.
+	repeated string electricityLabel = 4;
+	// Information on types of users that are permitted to make use of this Charging Park (e.g. all users, customers, ...).
+	repeated Emi007_UserType userType = 5;
+	// Type of Charging Park (e.g. private or public)
+	optional Emi005_FacilityType facilityType = 6;
+	// Information as to whether reservation of a charging place is possible at this Charging Park.
+	optional Emi010_Reservability reservability = 7;
+	// Information on pricing and billing models at this Charging Park. EMI supports many different, flexible billing models.
+	repeated PricingInformation pricingInformation = 8;
+	// Payment methods supported at this Charging Park.
+	repeated PaymentInformation paymentInformation = 9;
+	// May contain additional information, e.g. regarding the billing options (such as promotional offers) at this Charging Park.
+	repeated tpeg.datatypes.LocalisedShortString freeText = 10;
+	// Static information on a Charging Station.
+	repeated ChargingStationInformation chargingStationInformation = 100;
+}
+// Component to transmit static information on a Charging Station. This component may be sent with a low repetition rate.
+message ChargingStationInformation {
+	// EMI internal identifier for a Charging Station. Within a Charging Park (identified by its parkID_Key) the stationID_Key uniquely identifies a Charging Station.
+	// The stationID_Key shall be used by an end user device or application  to combine Charging Station Information, Detailed Charging Station Location and ChargingStationAvailability data and optionally the ReservationResponse.
+	uint32 stationID_Key = 1;
+	// External Identifier for the Charging Station, if applicable (e.g. based on the EVSE ID).
+	optional string stationExternalId = 2;
+	// Information on the Connector Type(s) supported at this Charging Station.
+	repeated ConnectorType connectorType = 3;
+	// Information on the Station Type for this Charging Station.
+	optional Emi008_StationType stationType = 4;
+	// Information on the Vehicle Type(s) that are supported for using this Charging Station.
+	repeated Emi009_VehicleType vehicleType = 5;
+	// Applicable size restrictions on vehicles permitted to park and charge at this Charging Station.
+	optional SizeRestrictions sizeRestrictions = 6;
+}
+// Detailed geolocation referencing information for Charging Park entry, Charging Park exit or single Charging Stations.
+message DetailedChargingParkLocation {
+	// EMI internal identifier for a Charging Park. The parkID_Key shall be used by an end user device or application  to combine Charging Park Information, Detailed Charging Park Location and ChargingParkAvailability data and optionally the ReservationResponse.
+	uint32 parkID_Key = 1;
+	// Additional information on the location of the entry roads of the Charging Park.
+	optional tpeg.lrc.LocationReferencingContainer parkEntryLocation = 100;
+	// Additional information on the location of the exit roads of the Charging Park.
+	optional tpeg.lrc.LocationReferencingContainer parkExitLocation = 101;
+	// Container component holding detailed location information for a list of Charging Stations.
+	repeated DetailedChargingStationLocation detailedChargingStationLocation = 102;
+}
+// Location reference information for the location of the Charging Station.
+message DetailedChargingStationLocation {
+	// EMI internal identifier for a Charging Station. Within a Charging Park (identified by its parkID_Key) the stationID_Key uniquely identifies a Charging Station.
+	// The stationID_Key shall be used by an end user device or application  to combine Charging Station Information, Detailed Charging Station Location and ChargingStationAvailability data and optionally the ReservationResponse.
+	uint32 stationID_Key = 1;
+	// Location reference for  the Charging Station.
+	tpeg.lrc.LocationReferencingContainer detailedStationLocation = 100;
+}
+// Component to transmit a Reservation Request.
+message ReservationRequest {
+	// An ID that authenticates the user that initiates the Reservation Request. The authentication e.g. can be handled by means of the customer card issued by the EM provider.
+	string authentificationId = 1;
+	// Payment method(s) that the requesting user can support. These should be matched against the Payment Methods supported by the Charging Park. This information is used to ensure the billing of the reservation.
+	Emi004_PaymentMethodType paymentMethodType = 2;
+	// Information on the Connector Type(s) supported by the electric vehicle for which the Reservation Request is carried out. Reference to the connectorTypeID_Key.
+	uint32 connectorType = 3;
+	// External Identifier for the Charging Station, if known (e.g. based on the EVSE ID), for which a reservation is requested. No further geographical identification information is needed for the request.
+	optional string stationExternalId = 4;
+	// EMI internal identifier for a Charging Park for which a reservation is requested. Typically, the reservation request will also use the stationID_Key to identify the Charging Station within the Charging Park.
+	// The parkID_Key shall be used by an end user device or application  to combine Charging Park Information, Detailed Charging Park Location and ChargingParkAvailability data and optionally the ReservationResponse.
+	optional uint32 parkID_Key = 5;
+	// EMI internal identifier for a Charging Station  for which a reservation is requested.  When this identifier is used in a request, also the parkID_Key shall be specified. Within a Charging Park (identified by its parkID_Key) the stationID_Key uniquely identifies a Charging Station.
+	// The stationID_Key shall be used by an end user device or application  to combine Charging Station Information, Detailed Charging Station Location and ChargingStationAvailability data and optionally the ReservationResponse.
+	optional uint32 stationID_Key = 6;
+	// Longitude of a location at which a reservation is requested. Shall only be used in a request in combination with latitude. Together, the longitude and latitude coordinates identify a location at or near which a Charging Point should be reserved.
+	optional int32 longitude = 7;
+	// Latitude of a location at which a reservation is requested. Shall only be used in a request in combination with longitude. Together, the longitude and latitude coordinates identify a location at or near which a Charging Point should be reserved.
+	optional int32 latitude = 8;
+	// Identification of the Charging Park Operator. May be used in combination with longitude / latitude, in the case where the Reservation Request is done for a Charging Point operated by a specific operator.
+	optional string parkOperator = 9;
+	// External Identifier for the electromobility provider, if applicable (e.g. based on the EVSE ID).
+	optional string providerExternalId = 10;
+	// Identifier for the vehicle, if applicable (e.g. based on the car number plate).
+	optional string vehicleId = 11;
+	// Information on the Vehicle Type for which the Reservation Request is performed.
+	optional Emi009_VehicleType vehicleType = 12;
+	// Information on type(s) of user that is carrying out the Reservation Request.
+	optional Emi007_UserType userType = 13;
+	// Estimated time of arrival at the location at which a reservation is requested.
+	optional fixed32 estimatedArrivalTime = 14;
+	// Estimated time at which the vehicle will be retrieved from the location at which a reservation is requested.
+	optional fixed32 estimatedPickupTime = 15;
+	// Dimensions of the vehicle for which a reservation is requested.
+	optional SizeRestrictions sizeRestrictions = 16;
+}
+// Component to transmit the response to a Reservation Request. The component shall contain all relevant information on a Charging Station for which a Reservation Request can be confirmed.
+message ReservationResponse {
+	// Time at which the Reservation Response is given.
+	fixed32 reservationTimeStamp = 1;
+	// True if reservation is confirmed, false otherwise.
+	bool reservationConfirmed = 2;
+	// External Identifier for Charging Point or Charging Station (e.g. based on the EVSE ID), for which the reservation response is given. Usage of this attribute is recommended in case of a positive reservation response.
+	optional string venueExternalId = 3;
+	// Unique identifier for the reservation response. Usage of this attribute is recommended in the case of a positive reservation response.
+	optional string reservationId = 4;
+	// EMI internal identifier for the Charging Park for which the reservation is confirmed. Typically, the Reservation Response will also use the stationID_Key to identify the Charging Station within the Charging Park.
+	// The parkID_Key shall be used by an end user device or application  to combine Charging Park Information, Detailed Charging Park Location and ChargingParkAvailability data and optionally the ReservationResponse.
+	optional uint32 parkID_Key = 5;
+	// EMI internal identifier for the Charging Station for which the reservation is confirmed. When this identifier is used, also the parkID_Key shall be specified. Within a Charging Park (identified by its parkID_Key) the stationID_Key uniquely identifies a Charging Station.
+	// The stationID_Key shall be used by an end user device or application  to combine Charging Station Information, Detailed Charging Station Location and ChargingStationAvailability data and optionally the ReservationResponse.
+	optional uint32 stationID_Key = 6;
+	// Earliest time at which the Charging Point, for which the reservation is confirmed, will be available.
+	optional fixed32 arrivalTime = 7;
+	// Latest time at which the vehicle shall be removed from the Charging Point for which the reservation is confirmed.
+	optional fixed32 pickupTime = 8;
+	// Any additional information regarding the reservation which is confirmed, e.g. on cancellation upon non-arrival, billing of the time the Charging Point is kept available but not currently occupied, etc.
+	optional tpeg.datatypes.LocalisedShortString reservationFreeText = 9;
+}
+// Component to transmit information on the availability of charging places at a specific Charging Park. This may be highly dynamic information. Optionally, the availability information may be broken down to the level of Charging Stations and Charging Points.
+message ChargingParkAvailability {
+	// EMI internal identifier for a Charging Park. The parkID_Key shall be used by an end user device or application  to combine Charging Park Information, Detailed Charging Park Location and ChargingParkAvailability data and optionally the ReservationResponse.
+	uint32 parkID_Key = 1;
+	// Current information on the overall number of free charging places within this Charging Park. This may be highly dynamic information.
+	// Note: this number does not have to be the sum of freePlacesForConnectorType (see subcomponent ChargingStationAvailability) because a single Charging Station may have multiple connectors per parking spot.
+	uint32 freePlacesForPark = 2;
+	// Provides timestamp giving date, hour, minute at which the latest valid information on ChargingParkAvailability was provided.
+	optional fixed32 timeStampForPark = 3;
+	// Minimal estimated time in minutes an end user will have to wait if there are no available charging places in this Charging Park.
+	optional uint32 minimalWaitingTime = 4;
+	// For each Charging Station of this Charging Park optionally specifies the availability information. A Charging Park may contain multiple Charging Stations.
+	repeated ChargingStationAvailability chargingStationAvailability = 5;
+}
+// Component to transmit information on the availability of a Charging Station at a specific Charging Park.
+// .
+message ChargingStationAvailability {
+	// EMI internal identifier for a Charging Station. Within a Charging Park (identified by its parkID_Key) the stationID_Key uniquely identifies a Charging Station.
+	// The stationID_Key shall be used by an end user device or application  to combine Charging Station Information, Detailed Charging Station Location and ChargingStationAvailability data and optionally the ReservationResponse.
+	uint32 stationID_Key = 1;
+	// Current information giving the number of free charging places for each ConnectorType at this Charging Station. This may be highly dynamic information.
+	repeated FreePlacesForConnectorType freePlacesForConnectorType = 2;
+	// The minimal amount of current in Ampere which is currently guaranteed by the Charging Park operator. This information can be used by an end user or end user device to estimate charging time.
+	optional uint32 minGuaranteedAmperage = 3;
+}
+// Component to transmit dynamic information on a ChargingStation specifying the number of available charging places per connectorType at this ChargingStation
+message FreePlacesForConnectorType {
+	// Current information giving the number of free charging places for this ConnectorType.
+	uint32 freePlaces = 1;
+	// EMI internal identifier for a connector type. Within a Charging Station (identified by the combination of parkID_Key and stationID_Key) the connectorTypeID_Key uniquely identifies a connector type with its attributes.
+	uint32 connectorTypeID_Key = 2;
+	// For usage with waiting time only. Qualifies the given waitingTime.
+	optional Emi003_Qualifier waitingTimeQualifier = 3;
+	// Estimated Time in minutes an end user will have to wait if there are no available free charging places at this Charging Station. Can be quantified by means of the waitingTimeQuantifier.
+	optional uint32 waitingTime = 4;
+}
+// Component to transmit further background information on a Charging Park.
+message ChargingParkSiteDescription {
+	// Name of individual Charging Park.
+	string parkName = 1;
+	// Name of operator of Charging Park.
+	string parkOperator = 2;
+	// Contact information for the operator of the Charging Park.
+	repeated OperatorContactInformation operatorContactInfo = 3;
+	// Street address of the Charging Park in the relevant local language(s).
+	repeated tpeg.datatypes.LocalisedShortString parkAddress = 4;
+	// Logo of the operator of the Charging Park.
+	optional Logo logo = 5;
+	// External Identifier for the electromobility provider, if applicable (e.g. based on the EVSE ID).
+	optional string providerExternalId = 6;
+	// Information on electromobility providers which have roaming agreements with the operator of this Charging Park.
+	// Based on this information, an end user can verify if charging at this Charging Park is interesting from a financial point of view. In the case where the electromobility provider which the user has a contract with, is not in the list of roamingPartner, use of this Charging Park might not be attractive.
+	repeated string roamingPartner = 7;
+	// Opening hours of the Charging Park.
+	optional tpeg.datatypes.TimeToolkit openingHours = 8;
+	// Lists available services which the Charging Park offers in addition to charging facility (e.g. Park and Ride, access to public transportation, ...).
+	repeated Emi006_AssociatedServiceType associatedServices = 9;
+	// Additional descriptive information on this Charging Park.
+	repeated tpeg.datatypes.LocalisedShortString additionalDescription = 10;
+}
+// Component to transmit operator Logo either as link or as favicon.
+message Logo {
+	// Mime type
+	string mimeType = 1;
+	// Link (URL) to the Logo
+	optional string src = 2;
+	// contents of favicon, N bytes, max 1024 bytes
+	optional bytes favicon = 3;
+}
+// General information (e.g. phone, fax, email, website) to contact the operator of this Charging Park.
+message OperatorContactInformation {
+	// Contact type
+	optional Emi011_ContactType operatorContactType = 1;
+	// Text containing e.g. phone number
+	optional string operatorContactText = 2;
+}
+// Applicable size restrictions on vehicles allowed to park and charge at this Charging Station.
+message SizeRestrictions {
+	// Maximum length of the vehicle in centimetres.
+	optional uint32 maxLength = 1;
+	// Maximum width of the vehicle in centimetres.
+	optional uint32 maxWidth = 2;
+	// Maximum height of the vehicle in centimetres.
+	optional uint32 maxHeight = 3;
+	// Maximum weight of the vehicle in kilogrammes.
+	optional uint32 maxWeight = 4;
+	// Minimal required length of charging cable in centimetres.
+	optional uint32 minimalRequiredCableLength = 5;
+}
+// Information on pricing and billing models at this Charging Park. EMI supports many different, flexible billing models.
+message PricingInformation {
+	// Time at which the last valid Pricing Information was published.
+	optional fixed32 acquisitionTimeStamp = 1;
+	// Resolution of unit Price (decimal points)
+	optional uint32 unitPriceResolution = 2;
+	// Qualification of the price information.
+	optional Emi003_Qualifier priceQualifier = 3;
+	// Price per Delivery Unit. May be qualified by means of the qualifier.
+	optional uint32 price = 4;
+	// The unit for which unit prices are given.
+	optional Emi001_BillingModel billingModel = 5;
+	// Supported currency type(s) for payment at this Charging Park.
+	optional tpeg.datatypes.Typ003_CurrencyType currencyType = 6;
+}
+// Payment methods supported at this Charging Park.
+message PaymentInformation {
+	// The payment method which is accepted in this Charging Park.
+	repeated Emi004_PaymentMethodType paymentMethodType = 1;
+	// The payment brand which is accepted in this Charging Park.
+	repeated string acceptedBrand = 2;
+	// The currency in which it is allowed to pay in this Charging Park.
+	repeated tpeg.datatypes.Typ003_CurrencyType currencyType = 3;
+}
+// This table enumerates the types of billing models offered at this facility.
+enum Emi001_BillingModel {
+
+	EMI001_BILLINGMODEL__UNKNOWN = 0;
+	// KilowattHour. Unit KWh.
+	EMI001_BILLINGMODEL__PRICE_PER_KWH = 1;
+
+	EMI001_BILLINGMODEL__PRICE_PER_HOUR = 2;
+
+	EMI001_BILLINGMODEL__PRICE_PER_MINUTE = 3;
+
+	EMI001_BILLINGMODEL__FLATRATE = 4;
+
+	EMI001_BILLINGMODEL__FREE = 5;
+
+	EMI001_BILLINGMODEL__ACCORDING_TO_CONTRACT = 6;
+
+	EMI001_BILLINGMODEL__UNDEFINED = 255;
+}
+// This table enumerates the list of plug types.
+enum Emi012_PlugType {
+
+	EMI012_PLUGTYPE_UNKNOWN = 0;
+
+	EMI012_PLUGTYPE_TYPE1_AC = 1;
+
+	EMI012_PLUGTYPE_TYPE2_AC = 2;
+
+	EMI012_PLUGTYPE_TYPE3C_AC = 3;
+
+	EMI012_PLUGTYPE_TYPE1_CCS = 4;
+
+	EMI012_PLUGTYPE_TYPE2_CCS = 5;
+
+	EMI012_PLUGTYPE_CHADEMO = 6;
+
+	EMI012_PLUGTYPE_TESLA_SUPERCHARGER = 7;
+
+	EMI012_PLUGTYPE_GBT_20234_PART2 = 8;
+
+	EMI012_PLUGTYPE_GBT_20234_PART3 = 9;
+
+	EMI012_PLUGTYPE_CEE3 = 10;
+
+	EMI012_PLUGTYPE_CEE5 = 11;
+
+	EMI012_PLUGTYPE_DOMESTIC_CONNECTOR = 12;
+
+	EMI012_PLUGTYPE_TESLA_RESTRICTED_TYPE_2_AC_PLUG = 13;
+
+	EMI012_PLUGTYPE_TESLA_RESTRICTED_TYPE_2_CCS_PLUG = 14;
+
+	EMI012_PLUGTYPE_UNDEFINED = 255;
+}
+// This table enumerates a list of qualifiers.
+enum Emi003_Qualifier {
+
+	EMI003_QUALIFIER__UNKNOWN = 0;
+
+	EMI003_QUALIFIER__MAXIMUM = 1;
+
+	EMI003_QUALIFIER__MINIMUM = 2;
+
+	EMI003_QUALIFIER__APPROXIMATELY = 3;
+
+	EMI003_QUALIFIER__EXACTLY = 4;
+
+	EMI003_QUALIFIER_UNDEFINED = 255;
+}
+// This table enumerates the applicable methods of payment accepted at this facility.
+enum Emi004_PaymentMethodType {
+
+	EMI004_PAYMENTMETHODTYPE_UNKNOWN = 0;
+
+	EMI004_PAYMENTMETHODTYPE_CASH = 1;
+
+	EMI004_PAYMENTMETHODTYPE_CREDIT_CARD = 2;
+
+	EMI004_PAYMENTMETHODTYPE_BANK_CARD = 3;
+
+	EMI004_PAYMENTMETHODTYPE_TANK_CARD = 4;
+
+	EMI004_PAYMENTMETHODTYPE_DEBIT_CARD = 6;
+
+	EMI004_PAYMENTMETHODTYPE_RFID = 7;
+
+	EMI004_PAYMENTMETHODTYPE_PREPAID_CARD = 8;
+
+	EMI004_PAYMENTMETHODTYPE_MOBILE_PHONE = 9;
+
+	EMI004_PAYMENTMETHODTYPE_SMARTCARD = 10;
+	// In UK also known as "agency card", in North America as "reward card" or "club card".
+	EMI004_PAYMENTMETHODTYPE_CUSTOMER_LOYALTY_CARD = 11;
+
+	EMI004_PAYMENTMETHODTYPE_UNDEFINED = 255;
+}
+// This table enumerates a list of facility types.
+enum Emi005_FacilityType {
+
+	EMI005_FACILITYTYPE_UNKNOWN = 0;
+
+	EMI005_FACILITYTYPE_PUBLIC_ON_THE_STREET = 1;
+
+	EMI005_FACILITYTYPE_PUBLIC_PARKING = 2;
+
+	EMI005_FACILITYTYPE_PRIVATE = 3;
+
+	EMI005_FACILITYTYPE_SEMI_PUBLIC = 4;
+
+	EMI005_FACILITYTYPE_COMMERCIAL = 5;
+
+	EMI005_FACILITYTYPE_UNDEFINED = 255;
+}
+// This table enumerates a list of applicable associated services which may be offered by a Charging Park.
+enum Emi006_AssociatedServiceType {
+
+	EMI006_ASSOCIATEDSERVICETYPE_UNKNOWN = 0;
+
+	EMI006_ASSOCIATEDSERVICETYPE_PUBLIC_TOILETS = 1;
+
+	EMI006_ASSOCIATEDSERVICETYPE_MINI_MARKET = 2;
+
+	EMI006_ASSOCIATEDSERVICETYPE_CARWASH = 3;
+
+	EMI006_ASSOCIATEDSERVICETYPE_RESTAURANT = 4;
+
+	EMI006_ASSOCIATEDSERVICETYPE_HOTEL = 5;
+
+	EMI006_ASSOCIATEDSERVICETYPE_VEHICLE_REPAIR_SHOP = 6;
+
+	EMI006_ASSOCIATEDSERVICETYPE_INTERNET_HOTSPOT = 7;
+
+	EMI006_ASSOCIATEDSERVICETYPE_PARKING = 8;
+
+	EMI006_ASSOCIATEDSERVICETYPE_PARK_DRIVE = 9;
+
+	EMI006_ASSOCIATEDSERVICETYPE_PARK_RIDE = 10;
+
+	EMI006_ASSOCIATEDSERVICETYPE_AIRPORT = 11;
+
+	EMI006_ASSOCIATEDSERVICETYPE_RAILWAY_STATION = 12;
+
+	EMI006_ASSOCIATEDSERVICETYPE_TOURIST_CENTRE = 13;
+
+	EMI006_ASSOCIATEDSERVICETYPE_UNDEFINED = 255;
+}
+// This table enumerates a list of user types.
+enum Emi007_UserType {
+
+	EMI007_USERTYPE_UNKNOWN = 0;
+
+	EMI007_USERTYPE_ALL_USERS = 1;
+
+	EMI007_USERTYPE_PROVIDER_CUSTOMERS = 2;
+
+	EMI007_USERTYPE_PROVIDER_AND_ROAMING_CUSTOMERS = 3;
+
+	EMI007_USERTYPE_SHOPPERS = 4;
+
+	EMI007_USERTYPE_HOTEL_GUESTS = 5;
+
+	EMI007_USERTYPE_STAFF = 6;
+
+	EMI007_USERTYPE_EMPLOYEES_ = 7;
+
+	EMI007_USERTYPE_VISITORS = 8;
+
+	EMI007_USERTYPE_MEMBERS = 9;
+
+	EMI007_USERTYPE_UNDEFINED = 255;
+}
+// This table enumerates a list of station types.
+enum Emi008_StationType {
+
+	EMI008_STATIONTYPE_UNKNOWN = 0;
+
+	EMI008_STATIONTYPE__SPLASH_WATER_PROOF = 1;
+
+	EMI008_STATIONTYPE__COVERED = 2;
+
+	EMI008_STATIONTYPE__CHARGE_PARK = 3;
+
+	EMI008_STATIONTYPE_UNDEFINED = 255;
+}
+// This table enumerates a list of vehicle types.
+enum Emi009_VehicleType {
+
+	EMI009_VEHICLETYPE_UNKNOWN = 0;
+
+	EMI009_VEHICLETYPE_CAR = 1;
+
+	EMI009_VEHICLETYPE_BICYCLE = 2;
+
+	EMI009_VEHICLETYPE_TRICYCLE = 3;
+
+	EMI009_VEHICLETYPE_SCOOTER = 4;
+
+	EMI009_VEHICLETYPE_BUS = 5;
+
+	EMI009_VEHICLETYPE_BOAT = 6;
+
+	EMI009_VEHICLETYPE_PADDLEBOAT = 7;
+
+	EMI009_VEHICLETYPE_PERSONAL_TRANSPORTER = 8;
+
+	EMI009_VEHICLETYPE_AIRPLANE = 9;
+
+	EMI009_VEHICLETYPE_UNDEFINED = 255;
+}
+// This table enumerates a list of reservability types.
+enum Emi010_Reservability {
+
+	EMI010_RESERVABILITY_UNKNOWN = 0;
+
+	EMI010_RESERVABILITY_RESERVATION_REQUIRED = 1;
+
+	EMI010_RESERVABILITY_RESERVATION_RECOMMENDED = 2;
+
+	EMI010_RESERVABILITY_NOT_RESERVABLE = 3;
+
+	EMI010_RESERVABILITY_UNDEFINED = 255;
+}
+// This table enumerates a list of contact types.
+enum Emi011_ContactType {
+
+	EMI011_CONTACTTYPE_UNKNOWN = 0;
+
+	EMI011_CONTACTTYPE_TELEPHONE = 1;
+
+	EMI011_CONTACTTYPE_FAX = 2;
+
+	EMI011_CONTACTTYPE_E_MAIL = 3;
+
+	EMI011_CONTACTTYPE_INTERNET_ADDRESS = 4;
+
+	EMI011_CONTACTTYPE_PRIORITY_TELEPHONE = 5;
+
+	EMI011_CONTACTTYPE_MAIN_OFFICE_TELEPHONE = 6;
+
+	EMI011_CONTACTTYPE_UNDEFINED = 255;
+}

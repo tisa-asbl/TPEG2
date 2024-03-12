@@ -1,0 +1,106 @@
+syntax = "proto3";
+
+package tpeg.etl;
+import "TPEG/TPEGDataTypes_2_1.proto";
+
+// This ExtendedTMC Location referencing container includes a number of enhancements with respect to the ALERT-C Location referencing container, in specific for exit and entries, internal/external location parts and version field to support future improvements. An ExtendedTMCLocationReference component (ETL) shall contain only one single type of the various provided types of extended TMClocation references, for example the tmcLocation XOR the tmcExitEntryLocation.
+message ExtendedTMCLocationReference {
+	// Major and Minor version of the ETL specification used to construct this location reference.
+	tpeg.datatypes.MajorMinorVersion specVersionID = 1;
+	// Enhanced ALERT-C location referencing container containing extra fields to specify the inclusion of TMC internal map segments of the primary and secondary location, as well as version infomation of the TMC location table used.
+	optional TMCLocationReference tmcLocation = 2;
+	// extension to TMC-Location to address entries and/or exits of a given point location
+	optional TMCExitEntryLocationReference tmcExitEntryLocation = 3;
+}
+// The datastructure TMC Location Reference extends the ALERT-C Location referencing container to specify whether the TMC internal road segments of primary and secondary location are affected/part of the location or not affected/not part of the location to be referenced.
+message TMCLocationReference {
+	// The actual location number
+	uint32 locationID = 1;
+	// Defines the different countries being responsible for the database creation. The table of country codes is specified in ISO 14819-3
+	uint32 countryCode = 2;
+	// The number of the location table. The value is specified per country and may differ over time.
+	uint32 locationTableNumber = 3;
+	// The direction bit defines the direction from primary to secondary location (against driving direction). If the direction flag is true/1 it means positive direction i.e. following to the successor in the location list.
+	bool direction = 4;
+	// If set to true the location shall be treated as being applicable for both directions. 
+	// NOTE: EN ISO 14819-1(,-2):2013 defines this information in two pieces. 1. implicitly per event code and 2. as inversion bit In the control code
+	bool bothDirections = 5;
+	// Number of hops in the linked list of location codes. The direction is defined by the direction attribute. Absent value is defined 0 and means inside the current location.
+	optional uint32 extent = 6;
+	// In non-European countries, the full range of location tables per country code can be used provided that the Extended Country Code associated with the ALERT-C location table is defined and provided (Extended Country Codes are defined in IEC 62106:2000). Even if this field is optional this field shall be sent mandatorily.
+	optional uint32 extendedCountryCode = 7;
+	// If one byte 4 bits for major and 3 bits for minor if two bytes 7 bits for major and 7 bits for minor three bytes not possible because ALERT-C restricts to 0-99 for both. Letters in some old versions are interpreted as minor increments to the given number.
+	optional uint32 locationTableVersion = 8;
+	// Precise ALERT-C Information follows
+	optional PreciseTMCInformation preciseTMCInfo = 9;
+	// true/1 if the internal TMC (through) road section of the primary location is also affected. False/0 otherwise.
+	bool useInternalPrimaryLocation = 10;
+	// true/1 if the internal TMC through road section of the secondary location is also affected. False/0 otherwise.
+	bool useInternalSecondaryLocation = 11;
+}
+// The PreciseTMCInformation datastructure specifies additional fields in order to reference a more precise location in between successive TMC locations by means of a metric distance (hazard distance), measured from the primary location in accordance with ISO 14819-1:2013.
+message PreciseTMCInformation {
+	// 0 = 100m, 1 = 500m, 2 = 1km, 3 = more than 1km 100m if attribute is absent.
+	optional uint32 distanceAccuracy = 1;
+	// Upstream distance from primary location  (against the direction of traffic), also known as D1. Range up to 25km calculated in  steps of 100m
+	optional uint32 hazardDistance1 = 2;
+	// Same as hazardDistance1 but range up to 6553km
+	optional uint32 hazardDistance2 = 3;
+	// Distance the start of the problem to the end of the problem. Which is not necessarily the primary location. Length up to 25km
+	optional uint32 problemLength1 = 4;
+	// Same as problemLength1 but length up to 6553km
+	optional uint32 problemLength2 = 5;
+}
+// The TMCExitEntryLocation reference datastructure specifies the applicable entries and/or exits of a TMC location where the content of the application content is located (e.g. to signal  'first exit closed', where the TMCExitEntryLocationReference references the 'first exit' and the application container signals the 'closed' event).
+message TMCExitEntryLocationReference {
+	// TMC location container indicating the main(junction)location for which the entries and/or exits are referenced in the data structure exitEntryInformation.
+	TMCLocationReference tmcLocation = 1;
+	// The specific entries or exits of the main TMC location to be referenced.
+	repeated ExitEntryInformation exitEntryInformation = 2;
+}
+// The datastructure ExitEntryInformation specifies detailed information as to which exits and or entries are affected by the application contents.
+message ExitEntryInformation {
+	// true or 1 for exit , false or 0 for entry
+	bool isExitOrEntry = 1;
+	// If true or 1, the entry or exit is on the opposite site of the road as the direction of the main TMC location reference indicates. (This is to be used if the main tmc location indicates 'both directions').
+	bool oppositeDir = 2;
+	// The TMC location where the exit leads to,or entry originates from
+	optional DirLocation dirLocation = 3;
+	// WGS84Coordinates of the specified exit entry
+	// May be used advantageously if there is more than one Exit or Entry for the specified side and not all of them are closed.
+	optional WGS84Coordinates exitEntryPoint = 4;
+	// Sequence number of exit or entry follows (e.g. exit 4 of 5)
+	optional SequenceNumberExitEntry sequenceNumberExitEntry = 5;
+}
+// The DirLocation datastructure specifies a TMC location where the referenced exit road leads to or the referenced entry road originates from.
+message DirLocation {
+	// The number of the TMC location where the exit leads to, or the entry originates from.
+	uint32 dirLocationID = 1;
+	// The direction of the dirLocation. where the exit leads to, or the entry originates from.
+	bool dirLocationDirection = 2;
+}
+// The datastructure SequenceNumberExitEntry specifies the sequence number of the exit or entry (e.g. exit 2 out of 5).
+message SequenceNumberExitEntry {
+	// Sequence number to indicate whether it is the 1st 2nd etc exit or entry.
+	// The numbering is separate per side of the road end per type of entry or exit.
+	// E.g. on one side of the road the following numbering can occur:
+	// Exit 1
+	// Entry 1
+	// Entry 2
+	// Exit 2
+	// Entry 2
+	uint32 sequenceNumberExitEntry = 1;
+	// Total number of exit or entries
+	uint32 totalNumberOfExitEntries = 2;
+}
+// The datastructure WGS84coordinates specifies a standard WGS84 coordinate pair with 24 bit resolution.
+message WGS84Coordinates {
+	// Longitude in standard 24 bit accuracy stores co-ordinates in order of magnitude of 10 micro degrees resolution (five decimals).
+	// Longitude (unit degrees) is encoded as follows:
+	// WGS84longitude = int ( sign(longitude)*0.5 + (longitude * (2^24))/360)
+	int32 wgs84Longitude = 1;
+	// WGS84 latitude in standard 24 bit accuracy stores co-ordinates in order of magnitude of 10 micro degrees resolution (five decimals).
+	// Latitude (unit degrees) is encoded as follows:
+	// WGS84latitude = int ( sign(latitude)*0.5 + (latitude * (2^24))/ 360)
+	int32 wgs84Latitude = 2;
+}

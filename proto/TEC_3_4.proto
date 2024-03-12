@@ -1,0 +1,1188 @@
+syntax = "proto3";
+
+package tpeg.tec;
+import "TPEG/MMC_1_1.proto";
+import "TPEG/TPEGDataTypes_2_1.proto";
+import "TPEG/LRC_3_0.proto";
+
+// A TECMessage is either a normal message or a cancellation message. A normal message (i.e. other than cancellation messages) shall include the following:
+//  one management container with management information related to the overall message (ID and version, expiry time)
+//  one event container with one traffic flow effect and optional one or more causes with additional information
+//  one location container with the location reference for the overall traffic message
+// The message management container is mandatory, the event- and location container are optional.
+// Event and ProblemLocation are modelled optionally because cancelmessages do not contain these elements: Cancellation messages shall not include an event and location container whereas normal messages (cancelFlag = false) shall include exactly one event and one location container
+message TECMessage {
+	// Message Management Container
+	MMCSwitch mmt = 100;
+	// Describes the impact on the Traffic Flow and the related cause.
+	optional Event event = 101;
+	// Location Reference Container (always included except for cancellation of a message)
+	optional tpeg.lrc.LocationReferencingContainer loc = 102;
+}
+// Abstract container included for formal reasons, to allow future extension of the MessageManagementContainer.
+message MMCSwitch {
+	oneof MMCSwitch_opt {
+		tpeg.mmc.MessageManagementContainer messageManagementContainer = 1;
+	}
+}
+// The Event component with its subordinated component Cause describes in general the impact on the traffic flow and the related cause.
+// For example: 'Stationary Traffic, (due to) Narrow Lanes'
+// Rules
+// * For a single event it should be possible to distinguish between the effect that describes an acute impairment of the traffic flow (e.g. stationary traffic) and the cause (e.g. roadworks). The latter can be seen as the reason for the traffic flow effect determined by the attribute effectCode. Furthermore the sub-component Cause can be used to inform or warn the driver for a special situation (e.g. oil on the road). The following combinations are possible:
+// a) A message contains only the Event component with its attribute effectCode that describes the impairment of the traffic flow directly.
+// b) The previous described element Event is expanded by one or more sub-components Cause. If a specific traffic flow is not available or shall not be given, the effectCode must set to 'unknown'.
+// * A (real) cause can be represented in the message by either a 'DirectCause' or a 'LinkedCause', but not both .
+// * Causes and sub-causes:
+// Each cause having more than one assigned sub-cause has an own sub-cause list. 
+// Simple terminals must support at least all causes, terminals with more memory might support sub-causes. In the latter case sub-causes should replace the (main-)cause completely. With other words: it is not necessary to combine causes and sub-cause to a meaningful grammar. 
+// * The component VehicleRestriction can be used to set a filter for different vehicles 
+// * Table tec001 and tec002 including all subCauseTables (tec1xx) are mainly taken from TMC-Event list (refer to ISO 14819-2:2005).
+// startTime and stopTime
+// describe the begin and the end of a traffic event. The terminal should use these values to calculate the validity of the event. This validity can be guaranteed by the provider only if the transmission channel is reliable, i.e. the messages expiry time does not elapse. If the message expiry time elapse the validity can not be guaranteed and it is recommended to ignore the message. Finally, the use of the message is up to the device.
+// LengthAffected and ProblemLength in CoreLocationDescription of LocationReferenceContainer
+// The ProblemLength in the location container describes the overall length of the event.
+// If LengthAffected is not defined within the Event component or any Cause of the Event Container, the ProblemLength has to be taken.
+// If the LengthAffected is given in a Event or Cause component it has to be taken only for this component.
+// In any case, the LengthAffected must not be greater than the ProblemLength.
+// If, in case of TMC location coding, neither LengthAffected nor ProblemLength is given, the total length between Primary and Secondary Location has to be taken.
+// The reference point for the TrafficFlowEffect and all Causes is
+// * the Start Location in case of TMC precise location referencing or
+// * the Secondary Location in case of TMC without precise location referencing or
+// * the begin of the location in case of AGORA (first core location).
+// Rounding of speed information
+// Speed information is always given in meter per seconds (m/s) since the general TPEG data type 'Velocity' is used. Depending on customer requirements the terminal has to convert and round these values.
+// For example:
+// [TODO: insert tables for rounding speed here]
+// The following formulae are used to calculate the values listed above in the table:
+// For steps of 10 km/h (10, 20, 30, ...)
+// * ROUND((v*3,6)/10)*10
+// For steps of 10 mi/h, starting with 10 mi/h (10, 20, 30, ...)
+// * ROUND((v*3,6)/1,604)/10)*10
+// For steps of 10 mi/h, starting with 5 mi/h (5, 15, 25, ...)
+// * ROUND((((v*3,6)/1,604)+5)/10)*10) - 5
+// 'ROUND' in this case is mathematical function to round values without fractional digits (e.g. 'java.lang.Math.round' in Java).
+message Event {
+	// Describes the impairment of the traffic flow.
+	Tec001_EffectCode effectCode = 1;
+	// Date and time at which an event began or is scheduled to begin (used for presentation to the end-user).
+	optional fixed32 startTime = 2;
+	// Date and time at which an event, or status information, ended or is scheduled to end (used for presentation to the end-user).
+	optional fixed32 stopTime = 3;
+	// Tendency is related to the traffic flow speed indicating if this has been increasing, decreasing, or has remained constant. It is not a forecast of a future trend, nor does it relate to the length of the traffic queue.
+	optional Tec006_Tendency tendency = 4;
+	// Length of the event in metres.
+	optional uint32 lengthAffected = 5;
+	// The actual average speed in m/s at the given location. It is recommended to use this value for calculation of the route and estimated arrival time.
+	optional uint32 averageSpeedAbsolute = 6;
+	// Delay in minutes. Only applicable to point locations, i.e. at border crossings.
+	optional uint32 delay = 7;
+	// Averaged speed limit (in m/s) within the problem location. Within the problem location multiple speed limits may exist (e.g. multiple reducing speed limits on entering a roadworks zone).
+	// Shall be used as speed limit for re-routing, but not to display or warn the driver.
+	optional uint32 segmentSpeedLimit = 8;
+	// The expected (normal) speed in m/s for this time of the day, based on e.g. historical data. This speed may vary as function of the time of day, and can be markedly different from the free-flow speed (especially in rush hour conditions).
+	optional uint32 expectedSpeedAbsolute = 9;
+	// AtGradeJunctionClosure defines the potential types of cases for dealing with cross traffic for at-grade junctions when there is a road closure, which is indicated by EffectCode=7.
+	optional Tec010_AtGradeJunctionClosure atGradeJunctionClosure = 10;
+	// Defines the reason for the traffic problem (direct or linked cause)
+	repeated Cause cause = 100;
+	// Recommendations or prohibitions for the driver.
+	repeated Advice advice = 101;
+	// Vehicle types (restrictions) that are relevant for the message.
+	repeated VehicleRestriction vehicleRestriction = 102;
+	// Diversion information relating to the event.
+	repeated DiversionRoute diversionRoute = 103;
+	// This is the temporary speed limit displayed on road signs associated with the Event. This data is for display to drivers.
+	repeated TemporarySpeedLimit temporarySpeedLimit = 104;
+}
+// The cause template specifies the additional interface including a mandatory CauseCode for all instances.
+// There are two ways to encode 'events' where an effect and one or more causes belong together.
+// Direct Cause
+// One method is to combine both the effect and the cause by encoding together in the same message. This is called a 'direct_cause' and might be used in situations where no detailed information is given, e.g. about the location or the length of the linked cause. Both the cause and effect occur within the same location as defined by the LRC
+// Linked Cause
+// The other method is called a 'LinkedCause' and must be used in cases where detailed information are explicitly given.
+// For example: The location and the length of the cause differ from that of the effect and additional speed information is available. In this case the complete description of the traffic situation will be spread over two or more messages.
+message Cause {
+	// Main categorisation of the cause according to table tec002
+	Tec002_CauseCode mainCause = 1;
+	oneof Cause_opt {
+		DirectCause directCause = 2;
+		LinkedCause linkedCause = 3;
+	}
+}
+// The component DirectCause can be used to describe the reason for traffic congestion in general. 
+// The main reason for the separation of causes and the effect is that the real traffic situation can be described in meaningful way to the driver.
+// For example: Road closed (effectCode=7), (due to) objects on the road (causeCode 10).
+message DirectCause {
+	// The level 'informative' should be used for all traffic events, which may influence the driver's route in any way requiring normal level ofattention from the driver.
+	// The 'danger levels' 1 to 3 should only be used for dangerous situations. Levels 1 to 3 are used in ascending levels of danger. (Level 1 - Danger; Level 3 - Highly Dangerous) 
+	// Danger levels 1 to 3 in combination with unverifiedInformation=True should be used in case of an unverified danger. For example, a traffic management centre receives a call from a private "jam buster" reporting that there is a "vehicle travelling on the wrong side of the road", but this has not been confirmed by the police.
+	Tec003_WarningLevel warningLevel = 1;
+	// If element is set to 1 the given information has not been verified.
+	bool unverifiedInformation = 2;
+	// Carries the value in the sub cause table defined by the mainCauseCode.
+	optional Tec100_SubCauseType subCause = 3;
+	// Length of the cause in metres.
+	optional uint32 lengthAffected = 4;
+	// Specifies whether lanes are closed or open.
+	optional Tec004_LaneRestriction laneRestrictionType = 5;
+	// Specifies how many lanes are closed or open. If this element is not given, but laneRestrictionType indicates there are lane closures it means an unspecified number of lanes are closed , i.e. "one or more lanes closed".
+	optional uint32 numberOfLanes = 6;
+	// Additional description
+	repeated tpeg.datatypes.LocalisedShortString freeText = 7;
+	// Offset (metres) from the start of the Cause to the end of the Problem Location.When used together with the attribute lengthAffected, the Cause can be positioned within the Event more accurately. Without attribute causeOffset but with lengthAffected defined the cause position is not defined. If  neither lengthAffected nor causeOffset are defined the Cause spans the entire Problem Location.
+	optional uint32 causeOffset = 8;
+	// The lane number(s) for which the cause applies.
+	optional LaneNumber causeLanes = 9;
+}
+// LinkedCause specifies a link to a message providing more details about the cause, e.g. for a divergent location. A link to another message is uniquely specified by the combination of originatorServiceID, contentID,  applicationID, and messageID. The linked message can be found in the service component where those attributes are equal to the values given in that component: linkedMessage, COID, originatorSID. The applicationID points always to the TEC Application and is therefore not explicit given in this component.
+message LinkedCause {
+	// Contains a messageID as pointer to a message. If contentID and originatorSID is not given, the linked messages is contained in the actual component stream of the actual service.
+	uint32 linkedMessage = 1;
+	// In case of absence, the linked message can be found in the component stream that has the same contentID as the linking message.
+	optional uint32 COID = 2;
+	// In case of absence, the linked message can be found in the same service as the linking message.
+	optional tpeg.datatypes.ServiceIdentifier originatorSID = 3;
+}
+// The advice component containsinformation on recommendations or prohibitions for the driver.
+message Advice {
+	// Main categorisation of advice
+	optional Tec005_AdviceCode adviceCode = 1;
+	// Detailed advice code
+	optional Tec200_SubAdviceType subAdviceCode = 2;
+	// Additional advice
+	repeated tpeg.datatypes.LocalisedShortString freeText = 3;
+	// Used when advice applies to specific vehicle types
+	repeated VehicleRestriction vehicleRestriction = 100;
+}
+// VehicleRestriction is used when the Event (or Diversion or Advice) is restricted to a specific vehicle type, e.g. only for lorries. If vehicleType is not present the subsequent RestictionType shall be applied to all types of vehicles.
+message VehicleRestriction {
+	// Type of vehicle
+	optional Tec009_VehicleType vehicleType = 1;
+	// Even when a particular vehicle type has been defined by tec009:VehicleType, RestrictionType may be used to specify further attributes to more closely define the vehicles for which the message applies. e.g. vehicle weight, vehicle height or other attribute, including vehicle destination.
+	// For example:
+	// "NoWintertyre" means the message applies to vehicles without winter tyres.
+	// "width greater 300" means that the event or the closure affects only vehicles with a width greater than 3 metres.
+	// "with destination in a given area" means the message is targeted  only at those vehicles whose destination is as specified in the area as attached to this restriction attribute.
+	repeated RestrictionType restriction = 2;
+}
+// Diversion route specifies one or more diversions.
+message DiversionRoute {
+	// Data structure to define diversion
+	repeated SegmentModifier segmentModifier = 1;
+	// Defines how diversion is restricted to specific vehicles
+	repeated VehicleRestriction vehicleRestriction = 100;
+}
+// One of the highly visible attributes of many roadworks is the imposed Temporary Speed Limit. This component provides the ability to define temporary speed limit information suitable for display to the driver.
+// Temporary SpeedLimit information associated with the event is defined in either kph or mph. Multiple sections with a different speed value may be provided with a length. The offset from the end of the Location Reference to the start of the first speed limit restriction allows the speed limit zone to be positioned independently of the cause.
+// A Vehicle Restriction can be added if needed.
+message TemporarySpeedLimit {
+	// Individual Section for the speed limit.
+	repeated TemporarySpeedLimitSection SpeedLimitSection = 1;
+	// Units definition for this Temporary Speed Limit. If speed limit should be displayed as mph, then this is set to true.
+	bool unitIsMPH = 2;
+	// Offset defines the distance from the start of the Temporary Speed Limit to the end of the Location reference. If not defined then first SpeedLimitSection starts at the beginning of the Location Reference.
+	optional uint32 offset = 3;
+	// One or more vehicle restrictions can be associated to each Temporary Speed Limit. This allows different speed limits to be signalled to different vehicles. (Lorries, Towing Vehicles) Without "VehicleRestriction" indicates all vehicles are affected.
+	repeated VehicleRestriction VehicleRestriction = 100;
+}
+// Lanes are numbered from the curb to the middle of the road. Right hand traffic lanes are therefore numbered from the right to the left relating to the driving direction. Left hand traffic lanes are numbered from left to right relating to the driving direction. The first lane has the number 0.
+// The lane numbering shall follow these rules:
+//  Hard shoulder is always number 0
+//   Leftmost lane in case of left hand driving (if exists)
+//   Rightmost lane in case of right hand driving (if exists)
+//   Additional hard shoulders are numbered consecutively (also applicable for hard shoulders next to the divider)
+//  First drivable lane for vehicles is number 1 
+//  All lanes which are physically available count
+//  Lanes which are temporarily closed also count
+//  Numbering is consecutive
+//  &nbsp;
+// If physical layout changes then a split of the location is recommended.
+message LaneNumber {
+	// true, if the hard shoulder exists and is selected
+	bool hardShoulder = 1;
+	// true, if the lane is selected
+	bool lane1 = 2;
+	// true, if the lane is selected
+	bool lane2 = 3;
+	// true, if the lane is selected
+	bool lane3 = 4;
+	// true, if the lane is selected
+	bool lane4 = 5;
+	// true, if the lane is selected
+	bool lane5 = 6;
+	// true, if the lane is selected
+	bool lane6 = 7;
+	// true, if the lane is selected
+	bool lane7 = 8;
+	// true, if the lane is selected
+	bool lane8 = 9;
+	// true, if the lane is selected
+	bool lane9 = 10;
+	// true, if the lane is selected
+	bool lane10 = 11;
+	// true, if the lane is selected
+	bool lane11 = 12;
+	// true, if the lane is selected
+	bool lane12 = 13;
+	// true, if the lane is selected
+	bool lane13 = 14;
+	// true, if the lane is selected
+	bool lane14 = 15;
+	// true, if the lane is selected
+	bool lane15 = 16;
+	// true, if the lane is selected
+	bool lane16 = 17;
+	// true, if the lane is selected
+	bool lane17 = 18;
+	// true, if the lane is selected
+	bool lane18 = 19;
+	// true, if the lane and potential further lanes are selected
+	bool lane19andMore = 20;
+	// true, if an inner side hard shoulder exists and is selected
+	bool innerSideHardShoulder = 21;
+}
+
+message RestrictionType {
+	// Defines the sort of restriction
+	Tec007_RestrictionType restrictionType = 1;
+	// Defines value associated to the restrictions where applicable
+	optional uint32 restrictionValue = 2;
+	// Restriction filter for specific destination
+	optional tpeg.lrc.LocationReferencingContainer restrictionLocation = 100;
+}
+
+message SegmentModifier {
+	// Type of diversion road
+	Tec008_DiversionRoadType diversionRoadType = 1;
+	// Position of segment
+	tpeg.lrc.LocationReferencingContainer segmentLocation = 100;
+}
+// Each section of the speed Limit is defined by a speed value and length.
+// A value for use in Wet conditions is also optionally available.
+message TemporarySpeedLimitSection {
+	// Speed Limit numerical value in kph or mph.
+	uint32 speedLimitValue = 1;
+	// Speed Limit numerical value to be used in wet conditions; in kph or mph.
+	optional uint32 speedLimitValueWet = 2;
+	// Length of the SpeedLimitSection, If this is not defined, then the section finishes at end of the Problem Location
+	optional uint32 speedLimitLength = 3;
+}
+// EffectCode describes the effect on the traffic flow.
+enum Tec001_EffectCode {
+
+	TEC001_EFFECTCODE_RFU = 0;
+	// Must be used if traffic flow is unknown. This
+	// is often the case for local hazard warnings.
+	TEC001_EFFECTCODE_TRAFFIC_FLOW_UNKNOWN = 1;
+	// Traffic flow is not restricted.
+	TEC001_EFFECTCODE_FREE_TRAFFIC_FLOW = 2;
+	// Traffic flow is restricted due to a large number of vehicles.
+	TEC001_EFFECTCODE_HEAVY_TRAFFIC = 3;
+	// Traffic flow is slower than normal.
+	TEC001_EFFECTCODE_SLOW_TRAFFIC = 4;
+	// The traffic is in queues but still slowly moving.
+	TEC001_EFFECTCODE_QUEUING_TRAFFIC = 5;
+	// The traffic is stationary or barely moving.
+	TEC001_EFFECTCODE_STATIONARY_TRAFFIC = 6;
+	// Traffic is completely stopped, or there is no flow due to the road being closed/blocked; the cause-component may give more information about the reason for "no traffic flow". For roads with at-grade junctions, how the closure/blockage affects cross-road traffic may be further specified with the attribute atGradeJunctionClosure.
+	TEC001_EFFECTCODE_NO_TRAFFIC_FLOW = 7;
+}
+// CauseCode defines various reasons why this message was sent.
+enum Tec002_CauseCode {
+
+	TEC002_CAUSECODE_RFU = 0;
+	// The volume of traffic is excessive for the roadway.
+	TEC002_CAUSECODE_TRAFFIC_CONGESTION = 1;
+	// An accident is affecting normal traffic movement.
+	TEC002_CAUSECODE_ACCIDENT = 2;
+	// Roadworks are affecting normal traffic movement.
+	TEC002_CAUSECODE_ROADWORKS = 3;
+	// The width of a road lane is smaller than usual.
+	TEC002_CAUSECODE_NARROW_LANES = 4;
+	// The road is affected by an obstacle that may make it impassable. (actual impassable road should be signalled with trafficFlowEffect = no_traffic_flow)
+	TEC002_CAUSECODE_IMPASSABILITY = 5;
+	// Traction between tyres and the road is adversely affected.
+	TEC002_CAUSECODE_SLIPPERY_ROAD = 6;
+	// Substantial areas of water are on the road surface, and a danger of aquaplaning exists.
+	TEC002_CAUSECODE_AQUAPLANING = 7;
+	// Used when fire/smoke is adversely affecting driving conditions.
+	TEC002_CAUSECODE_FIRE = 8;
+	// Driving conditions are hazardous and driver should proceed with caution.
+	TEC002_CAUSECODE_HAZARDOUS_DRIVING_CONDITIONS = 9;
+	// Objects are on the road, that may require the driver to deviate to avoid; objects are not large enough to block the road.
+	TEC002_CAUSECODE_OBJECTS_ON_THE_ROAD = 10;
+	// Animals are on the road.
+	TEC002_CAUSECODE_ANIMALS_ON_ROADWAY = 11;
+	// People are on the road.
+	TEC002_CAUSECODE_PEOPLE_ON_ROADWAY = 12;
+	// A broken down vehicle is on the road causing a potential obstruction.
+	TEC002_CAUSECODE_BROKEN_DOWN_VEHICLES = 13;
+	// A motorist is driving his vehicle on the wrong side of the carriageway (also known as a  "ghost-driver")
+	TEC002_CAUSECODE_VEHICLE_ON_WRONG_CARRIAGEWAY = 14;
+	// Emergency services are on site to deal with an earlier accident.
+	TEC002_CAUSECODE_RESCUE_AND_RECOVERY_WORK_IN_PROGRESS = 15;
+	// Traffic authorities have imposed some change to the regulations or road situation changing the usual traffic situation. (Usually this will affect traffic flow, resulting in an 'effect' e.g. 'slow traffic'.)
+	TEC002_CAUSECODE_REGULATORY_MEASURE = 16;
+	// Extreme weather conditions exist.
+	TEC002_CAUSECODE_EXTREME_WEATHER_CONDITIONS = 17;
+	// Visibility is reduced, requiring reduced speeds and additional care.
+	TEC002_CAUSECODE_VISIBILITY_REDUCED = 18;
+	// Precipitation is affecting driving conditions, usually requiring reduced speeds and consequently resulting in longer journey times.
+	TEC002_CAUSECODE_PRECIPITATION = 19;
+	// The reckless acts of a person may require drivers to take action.
+	TEC002_CAUSECODE_RECKLESS_PERSONS = 20;
+	// An overheight vehicle has triggered a warning system, and may potentially cause delays.
+	TEC002_CAUSECODE_OVERHEIGHT_WARNING_SYSTEM_TRIGGERED = 21;
+	// A higher than usual risk of accidents exists due to a change in traffic regulation,(risk exists until drivers become familiar with the revised regulations)
+	TEC002_CAUSECODE_TRAFFIC_REGULATIONS_CHANGED = 22;
+	// A major event may be causing traffic disruption Details may be given as 'free-text'
+	TEC002_CAUSECODE_MAJOR_EVENT = 23;
+	// A transport service is not operating, causing disruption to would-be users and others.
+	TEC002_CAUSECODE_SERVICE_NOT_OPERATING = 24;
+	// A service, although operating, is not usable, or usable with restrictions.
+	TEC002_CAUSECODE_SERVICE_NOT_USEABLE = 25;
+	// Slow moving vehicles are causing congestion or is a hazard
+	TEC002_CAUSECODE_SLOW_MOVING_VEHICLES = 26;
+	// There is particular danger to vehicles suddenly encountering the end of a queue of traffic.
+	TEC002_CAUSECODE_DANGEROUS_END_OF_QUEUE = 27;
+	// A risk of fire exists. Open fires /naked flames or glow should be extinguished.
+	TEC002_CAUSECODE_RISK_OF_FIRE = 28;
+	// A time delay exists.
+	TEC002_CAUSECODE_TIME_DELAY = 29;
+	// A police checkpoint is causing delay or congestion
+	TEC002_CAUSECODE_POLICE_CHECKPOINT = 30;
+	// Roadside equipment is not working , or is working incorrectly.
+	TEC002_CAUSECODE_MALFUNCTIONING_ROADSIDE_EQUIPMENT = 31;
+	// This is a test message used for testing only. Any additional content of this message shall be marked as being a test only.
+	TEC002_CAUSECODE_TEST_MESSAGE = 100;
+
+	TEC002_CAUSECODE_UNDECODABLE_CAUSE = 255;
+}
+// WarningLevel defines different levels of danger.
+enum Tec003_WarningLevel {
+
+	TEC003_WARNINGLEVEL_RFU = 0;
+	// This level is of an informative nature.
+	TEC003_WARNINGLEVEL_INFORMATIVE = 1;
+	// This level is used for situations requiring additional attention by the driver.
+	TEC003_WARNINGLEVEL_DANGER_LEVEL_1 = 2;
+	// This level is used when local hazard situations present a danger to the driver.
+	TEC003_WARNINGLEVEL_DANGER_LEVEL_2 = 3;
+	// This level is used when local hazard situations present highly dangerous situation to the driver.
+	TEC003_WARNINGLEVEL_DANGER_LEVEL_3 = 4;
+}
+// LaneRestriction defines lanes being restricted with this message.
+enum Tec004_LaneRestriction {
+
+	TEC004_LANERESTRICTION_RFU = 0;
+	// One or more lanes are defined as being closed or blocked. If exact lanes are known, use causeLanes to provide exact lanes that are closed/blocked.
+	TEC004_LANERESTRICTION_LANE_S_CLOSED_OR_BLOCKED = 1;
+	// One or more lanes are defined as being open.If exact lanes are known, use causeLanes to provide exact lanes that are open.
+	TEC004_LANERESTRICTION_LANE_S_OPEN = 2;
+	// 'right-hand-lane' always refers to driving lane on drivers right, irrespective of the side of the road used for driving in a particular country. It excludes 'special' lanes such as crawler lanes and hard-shoulder. If exact number of lanes is known, provide this attribute in numberOfLanes.
+	TEC004_LANERESTRICTION_RIGHT_LANE_S_CLOSED_OR_BLOCKED = 3;
+	// 'left-hand-lane' always refers to driving lane on drivers left, irrespective of the side of the road used for driving in a particular country. It excludes 'special' lanes such as crawler lanes and hard-shoulder. If exact number of lanes is known, provide this attribute in numberOfLanes.
+	TEC004_LANERESTRICTION_LEFT_LANE_S_CLOSED_OR_BLOCKED = 4;
+	// The hard shoulder is open for driving.Use causeLanes to indicate the exact lane (outer shoulder or inner shoulder).
+	TEC004_LANERESTRICTION_HARD_SHOULDER_OPEN = 5;
+	// Undefined entry.
+	TEC004_LANERESTRICTION__UNDECODABLE_LANE_RESTRICTION = 255;
+}
+// A recommendation or instruction for the driver to do something.
+enum Tec005_AdviceCode {
+
+	TEC005_ADVICECODE_RFU = 0;
+	// Drivers should find a safe place to park.
+	TEC005_ADVICECODE_DRIVE_TO_NEXT_AVAILABLE_PARKING_PLACE = 1;
+	// Drivers should remain in line and not overtake.
+	TEC005_ADVICECODE_OVERTAKING_NOT_ALLOWED = 2;
+	// Situations determine that driving is not allowed. Drivers should stop at the first place it is safe to do so.
+	TEC005_ADVICECODE_DRIVING_NOT_ALLOWED = 3;
+	// The hard shoulder may be used as a driving lane.
+	TEC005_ADVICECODE_USE_HARD_SHOULDER_AS_LANE = 4;
+	// Vehicles are required to wait for a Police patrol before continuing on their journey.
+	TEC005_ADVICECODE_WAIT_FOR_POLICE_PATROL = 5;
+	// Current weather conditions are unsafe for driving, and drivers are required to wait until conditions improve before continuing their journey
+	TEC005_ADVICECODE_WAIT_FOR_IMPROVED_WEATHER = 6;
+	// Drivers are requested to move aside to allow vehicles approaching from behind to pass.
+	TEC005_ADVICECODE_MAKE_WAY_FOR_VEHICLES_COMING_FROM_BEHIND_TO_PASS = 7;
+	// Instruction to a driver to follow a specific diversion route.
+	TEC005_ADVICECODE_FOLLOW_DIVERSION = 8;
+	// Drivers are advised that a diversion is required, however there is no specific diversion offered.
+	TEC005_ADVICECODE_NO_DIVERSION_TO_RECOMMEND = 9;
+	// Used to advise the driver that although there is a problem on the road, no suitable better alternative exists, and that the driver should keep on the current route.
+	TEC005_ADVICECODE_DO_NOT_DIVERT = 10;
+	// Police are directing  traffic; drivers should follow their instructions
+	TEC005_ADVICECODE_FOLLOW_POLICE_INSTRUCTIONS = 11;
+	// Used to advise that particular areas should be avoided.
+	TEC005_ADVICECODE_AVOID_THE_AREA = 12;
+	// Drivers should take extra casre, because there is increased road hazard.
+	TEC005_ADVICECODE_DRIVE_CAREFULLY = 13;
+	// Drivers should remain with their vehicles.
+	TEC005_ADVICECODE_DO_NOT_LEAVE_YOUR_VEHICLE = 14;
+	// Used to advise drivers that further detailed information is available on the radio.
+	TEC005_ADVICECODE_SWITCH_ON_RADIO = 15;
+	// Used to advise that Toll Lanes may be used.
+	TEC005_ADVICECODE_USE_TOLL_LANES = 16;
+	// The driver should await a convoy service before proceeding.
+	TEC005_ADVICECODE_WAIT_FOR_CONVOY = 17;
+
+	TEC005_ADVICECODE_UNDECODABLE_ADVICE = 255;
+}
+// Tendency is related to the traffic flow speed indicating if this has been increasing, decreasing, or has remained constant. It is not a forecast of a future trend, nor does it relate to the length of the traffic queue.
+enum Tec006_Tendency {
+
+	TEC006_TENDENCY_RFU = 0;
+
+	TEC006_TENDENCY_SLIGHTLY_INCREASING = 1;
+
+	TEC006_TENDENCY_INCREASING = 2;
+
+	TEC006_TENDENCY_STRONGLY_INCREASING = 3;
+
+	TEC006_TENDENCY_SLIGHTLY_DECREASING = 4;
+
+	TEC006_TENDENCY_DECREASING = 5;
+
+	TEC006_TENDENCY_STRONGLY_DECREASING = 6;
+
+	TEC006_TENDENCY_CONSTANT = 7;
+
+	TEC006_TENDENCY__UNDECODABLE_TENDENCY = 255;
+}
+// Restriction type defines different types of attributes for filtering the addressed vehicles for this message.
+enum Tec007_RestrictionType {
+
+	TEC007_RESTRICTIONTYPE_RFU = 0;
+	// Units: cm
+	TEC007_RESTRICTIONTYPE_WIDTH_LESS_THAN = 1;
+	// Units: cm
+	TEC007_RESTRICTIONTYPE_WIDTH_GREATER_THAN = 2;
+	// Units: cm
+	TEC007_RESTRICTIONTYPE_HEIGHT_LESS_THAN = 3;
+	// Units: cm
+	TEC007_RESTRICTIONTYPE_HEIGHT_GREATER_THAN = 4;
+	// Units: kg
+	TEC007_RESTRICTIONTYPE_WEIGHT_LESS_THAN = 5;
+	// Units: kg
+	TEC007_RESTRICTIONTYPE_WEIGHT_GREATER_THAN = 6;
+
+	TEC007_RESTRICTIONTYPE_WITHOUT_WINTER_TYRES = 7;
+
+	TEC007_RESTRICTIONTYPE_WITHOUT_SNOW_CHAINS = 8;
+
+	TEC007_RESTRICTIONTYPE_WITH_TRAILER = 9;
+
+	TEC007_RESTRICTIONTYPE_WITH_CARAVAN = 10;
+	// Units: number
+	TEC007_RESTRICTIONTYPE_PERSONS_IN_VEHICLE_LESS_THAN = 11;
+	// Units: number
+	TEC007_RESTRICTIONTYPE_PERSONS_IN_VEHICLE_MORE_THAN = 12;
+
+	TEC007_RESTRICTIONTYPE_EVEN_NUMBER_PLATE = 13;
+
+	TEC007_RESTRICTIONTYPE_ODD_NUMBER_PLATE = 14;
+	// Units: cm
+	TEC007_RESTRICTIONTYPE_LENGTH_LESS_THAN = 15;
+	// Units: cm
+	TEC007_RESTRICTIONTYPE_LENGTH_GREATER_THAN = 16;
+	// Units: kg
+	TEC007_RESTRICTIONTYPE_AXLE_LOAD_LESS_THAN = 17;
+	// Units: kg
+	TEC007_RESTRICTIONTYPE_AXLE_LOAD_GREATER_THAN = 18;
+	// 'EURO3' is a specific vehicle emission class according to European Council Directives.
+	TEC007_RESTRICTIONTYPE_VEHICLE_FULFILS_EMISSION_STANDARD_EURO3 = 19;
+	// 'EURO3D4' is a specific vehicle emission class according to European Council Directives.
+	TEC007_RESTRICTIONTYPE_VEHICLE_FULFILS_EMISSION_STANDARD_EURO3D4 = 20;
+	// 'EURO4' is a specific vehicle emission class according to European Council Directives.
+	TEC007_RESTRICTIONTYPE_VEHICLE_FULFILS_EMISSION_STANDARD_EURO4 = 21;
+	// 'EURO5' is a specific vehicle emission class according to European Council Directives.
+	TEC007_RESTRICTIONTYPE_VEHICLE_FULFILS_EMISSION_STANDARD_EURO5 = 22;
+
+	TEC007_RESTRICTIONTYPE_WITH_PETROL_ENGINE = 23;
+
+	TEC007_RESTRICTIONTYPE_WITH_DIESEL_ENGINE = 24;
+
+	TEC007_RESTRICTIONTYPE_WITH_LPG_ENGINE = 25;
+
+	TEC007_RESTRICTIONTYPE_THROUGH_TRAFFIC = 26;
+
+	TEC007_RESTRICTIONTYPE_RESIDENTS_TRAFFIC = 27;
+
+	TEC007_RESTRICTIONTYPE_WITH_DESTINATION_IN_GIVEN_AREA = 28;
+
+	TEC007_RESTRICTIONTYPE_UNDECODABLE_RESTRICTION = 255;
+}
+// DiversionRoadType defines different levels of usability for parts of the diversion.
+enum Tec008_DiversionRoadType {
+
+	TEC008_DIVERSIONROADTYPE_RFU = 0;
+	// A road or section of road that passes around the restricted or congested area.
+	TEC008_DIVERSIONROADTYPE_BYPASS = 1;
+	// The part of the diversion that gives access to the bypass.
+	TEC008_DIVERSIONROADTYPE_ACCESS_ROAD = 2;
+	// Part of the network which is not usable for through traffic.
+	TEC008_DIVERSIONROADTYPE_LIMITED_ACCESS_ROAD = 3;
+	// Part of the network which should be avoided.
+	TEC008_DIVERSIONROADTYPE_NOT_RECOMMENDED_ROAD = 4;
+	// Part of the network which is closed.
+	TEC008_DIVERSIONROADTYPE_CLOSED_ROAD = 5;
+
+	TEC008_DIVERSIONROADTYPE__UNDECODABLE_DIVERSION_ROAD_TYPE = 255;
+}
+// VehicleType defines different types of cars for filtering the addressed vehicles for this message.
+enum Tec009_VehicleType {
+
+	TEC009_VEHICLETYPE_RFU = 0;
+
+	TEC009_VEHICLETYPE_CAR = 1;
+
+	TEC009_VEHICLETYPE_LORRY = 2;
+
+	TEC009_VEHICLETYPE_BUS = 3;
+
+	TEC009_VEHICLETYPE_TAXI = 4;
+
+	TEC009_VEHICLETYPE_TRAIN = 5;
+
+	TEC009_VEHICLETYPE_MOTOR_CYCLE = 6;
+
+	TEC009_VEHICLETYPE_VEHICLE_WITH_TRAILER = 7;
+
+	TEC009_VEHICLETYPE_MOTOR_VEHICLE = 8;
+
+	TEC009_VEHICLETYPE_VEHICLE_TRANSPORTING_HAZARDOUS_GOODS = 9;
+
+	TEC009_VEHICLETYPE_VEHICLE_TRANSPORTING_AN_ABNORMAL_SIZE_LOAD = 10;
+
+	TEC009_VEHICLETYPE_HEAVY_GOODS_VEHICLE = 11;
+
+	TEC009_VEHICLETYPE_UNDECODABLE_VEHICLE_TYPE = 255;
+}
+// AtGradeJunctionClosure defines the potential types of cases for dealing with cross traffic for at-grade junctions when there is a road closure, which is indicated by EffectCode=7. Usage of AtGradeJunctionClosure is only relevant for a junction between two non controlled-access roads. The attribute does not apply to slip roads. If no value is specified, then the client shall assume value 0, "unknown".
+enum Tec010_AtGradeJunctionClosure {
+	// Recommend to use “Intermediate junctions closed and edge junctions open” as the default behavior.
+	TEC010_ATGRADEJUNCTIONCLOSURE_UNKNOWN = 0;
+	// All at-grade junctions are closed for cross traffic.  This includes junctions at the edge of the main roadway closure.  If the edge of this road closure is near an at-grade junction, then these edge junctions are also closed.
+	TEC010_ATGRADEJUNCTIONCLOSURE_ALL_JUNCTIONS_CLOSED = 1;
+	// Intermediate at-grade junctions closed for cross traffic, and edge at-grade junctions are open for cross traffic.
+	// If the edge of this road closure is near an at-grade junction then these edge junctions are open.
+	TEC010_ATGRADEJUNCTIONCLOSURE_INTERMEDIATE_JUNCTIONS_CLOSED_AND_EDGE_JUNCTIONS_OPEN = 2;
+	// All at-grade junctions are open for cross traffic.
+	TEC010_ATGRADEJUNCTIONCLOSURE_ALL_JUNCTIONS_OPEN = 3;
+
+	TEC010_ATGRADEJUNCTIONCLOSURE_UNDECODABLE_AT_GRADE_JUNCTION_CLOSURE = 255;
+}
+// The SubCauseType defines the generic type applying different tables according to the different mainCauses.
+// Valid entries for attributes of this type are listed in the tables:
+// tec101:TrafficCongestion
+// tec102:Accident
+// tec103:Roadworks
+// tec104:NarrowLanes
+// tec105:Impassability
+// tec106:SlipperyRoad
+// tec108:Fire
+// tec109:HazardousDrivingConditions
+// tec110:ObjectsOnTheRoad
+// tec111:AnimalsOnRoadway
+// tec112:PeopleOnRoadway
+// tec113:BrokenDownVehicles
+// tec115:RescueAndRecoveryWorkInProgress
+// tec116:RegulatoryMeasure
+// tec117:ExtremeWeatherConditions
+// tec118:VisibilityReduced
+// tec119:Precipitation
+// tec120:RecklessPersons
+// tec123:MajorEvent
+// tec124:ServiceNotOperating
+// tec125:ServiceNotUseable
+// tec126:SlowMovingVehicles
+// tec127:DangerousEndOfQueue
+// tec128:RiskOfFire
+// tec129:TimeDelay
+// tec130:PoliceCheckpoint
+// tec131:MalfunctioningRoadsideEquipment.
+// Note: In the case a client device is unable to decode a subCause code the original mainCause is to be used.
+message Tec100_SubCauseType {
+	oneof Tec100_SubCauseType_opt {
+		Tec119_Precipitation tec119_Precipitation = 1;
+		Tec115_RescueAndRecoveryWorkInProgress tec115_RescueAndRecoveryWorkInProgress = 2;
+		Tec105_Impassability tec105_Impassability = 3;
+		Tec109_HazardousDrivingConditions tec109_HazardousDrivingConditions = 4;
+		Tec126_SlowMovingVehicles tec126_SlowMovingVehicles = 5;
+		Tec113_BrokenDownVehicles tec113_BrokenDownVehicles = 6;
+		Tec129_TimeDelay tec129_TimeDelay = 7;
+		Tec104_NarrowLanes tec104_NarrowLanes = 8;
+		Tec112_PeopleOnRoadway tec112_PeopleOnRoadway = 9;
+		Tec131_MalfunctioningRoadsideEquipment tec131_MalfunctioningRoadsideEquipment = 10;
+		Tec110_ObjectsOnTheRoad tec110_ObjectsOnTheRoad = 11;
+		Tec127_DangerousEndOfQueue tec127_DangerousEndOfQueue = 12;
+		Tec102_Accident tec102_Accident = 13;
+		Tec106_SlipperyRoad tec106_SlipperyRoad = 14;
+		Tec124_ServiceNotOperating tec124_ServiceNotOperating = 15;
+		Tec117_ExtremeWeatherConditions tec117_ExtremeWeatherConditions = 16;
+		Tec116_RegulatoryMeasure tec116_RegulatoryMeasure = 17;
+		Tec123_MajorEvent tec123_MajorEvent = 18;
+		Tec108_Fire tec108_Fire = 19;
+		Tec101_TrafficCongestion tec101_TrafficCongestion = 20;
+		Tec128_RiskOfFire tec128_RiskOfFire = 21;
+		Tec111_AnimalsOnRoadway tec111_AnimalsOnRoadway = 22;
+		Tec120_RecklessPersons tec120_RecklessPersons = 23;
+		Tec125_ServiceNotUseable tec125_ServiceNotUseable = 24;
+		Tec130_PoliceCheckpoint tec130_PoliceCheckpoint = 25;
+		Tec118_VisibilityReduced tec118_VisibilityReduced = 26;
+		Tec103_Roadworks tec103_Roadworks = 27;
+	}
+}
+// TrafficCongestionis used when the volume of traffic is excessive for the roadway.
+enum Tec101_TrafficCongestion {
+
+	TEC101_TRAFFICCONGESTION_RFU = 0;
+	// Traffic problem is caused by the volume of traffic being excessive for the roadway.
+	TEC101_TRAFFICCONGESTION_INCREASED_VOLUME_OF_TRAFFIC = 1;
+	// Undecodable sub cause code, use main cause code instead.
+	TEC101_TRAFFICCONGESTION_UNDECODABLE_TRAFFIC_CONGESTION = 255;
+}
+// This enumeration type is used in the case of an accident.
+enum Tec102_Accident {
+
+	TEC102_ACCIDENT_RFU = 0;
+	// Multiple vehicles are involved in an accident.
+	TEC102_ACCIDENT_MULTI_VEHICLE_ACCIDENT = 1;
+	// Used when rescue and recovery work will take an especially long time to clear after an accident, and normal flow to be re-established.
+	TEC102_ACCIDENT_MAJOR_ACCIDENT = 2;
+	// The accident involves a lorry.
+	TEC102_ACCIDENT_ACCIDENT_INVOLVING_LORRY = 3;
+	// The accident involves a bus.
+	TEC102_ACCIDENT_ACCIDENT_INVOLVING_BUS = 4;
+	// The accident involves a vehicle carrying hazardous materials, posing additional dangers.
+	TEC102_ACCIDENT_ACCIDENT_INVOLVING_HAZARDOUS_MATERIALS = 5;
+	// An accident occurred affecting traffic in opposite direction, but drivers are slowing to look, causing a 'secondary effect' on the traffic flow.
+	TEC102_ACCIDENT_ACCIDENT_IN_OPPOSITE_LANE = 6;
+	// An accident has occurred, at time of broadcast the accident is not being attended to by the emergency services.
+	TEC102_ACCIDENT_UNSECURED_ACCIDENT = 7;
+	// undecodable sub cause code, use main cause code instead.
+	TEC102_ACCIDENT_UNDECODABLE_ACCIDENT = 255;
+}
+// This enumeration type is used when road works are the reason.
+enum Tec103_Roadworks {
+
+	TEC103_ROADWORKS_RFU = 0;
+	// Major roadworks are causing disruption.
+	TEC103_ROADWORKS_MAJOR_ROADWORKS = 1;
+	// Road marking work is causing disruption.
+	TEC103_ROADWORKS_ROAD_MARKING_WORK = 2;
+	// Slow moving road maintenance vehicles are causing disruption.
+	TEC103_ROADWORKS_SLOW_MOVING_ROAD_MAINTENANCE = 3;
+	// undecodable sub cause code, use main cause code instead.
+	TEC103_ROADWORKS_UNDECODABLE_ROADWORKS = 255;
+}
+// This enumeration type is used when the width of lanes is less than usual, or other lane restriction exists.
+enum Tec104_NarrowLanes {
+
+	TEC104_NARROWLANES_RFU = 0;
+	// One side of the roadway is closed, resulting in both directions sharing the remaining open side: consequently the number of lanes in both directions is reduced.
+	TEC104_NARROWLANES_CONTRAFLOW = 1;
+	// The hard shoulder is closed.
+	TEC104_NARROWLANES_HARD_SHOULDER_CLOSED = 2;
+	// An entry or exit slip lane is closed.
+	TEC104_NARROWLANES_SLIP_LANE_CLOSED = 3;
+	// The crawler lane is closed; slow traffic may be using a 'normal' driving lane.
+	TEC104_NARROWLANES_CRAWLER_LANE_CLOSED = 4;
+	// undecodable sub cause code, use main cause code instead.
+	TEC104_NARROWLANES_UNDECODABLE_NARROW_LANE_TYPE = 255;
+}
+// This enumeration type is used in cases where the road is generaly impassable, or partially blocked, or is hazardous due to driving conditions. If truly blocked, then TrafficFlowEffect is expected to be "no_traffic_flow". (Impassability does not by itself indicate a closure).
+enum Tec105_Impassability {
+
+	TEC105_IMPASSABILITY_RFU = 0;
+	// The road is affected by  flooding.
+	TEC105_IMPASSABILITY_FLOODING = 1;
+	// The road has a danger of being affected by avalanches.
+	TEC105_IMPASSABILITY_DANGER_OF_AVALANCHES = 2;
+	// There is active blasting of avalanches on or near the road and so may be impassable for short periods of time.
+	TEC105_IMPASSABILITY_BLASTING_OF_AVALANCHES = 3;
+	// The road is affected by landslips.
+	TEC105_IMPASSABILITY_LANDSLIPS = 4;
+	// The road is affected by a chemical spill
+	TEC105_IMPASSABILITY_CHEMICAL_SPILLAGE = 5;
+	// The road is impassable due to a winter closure.
+	TEC105_IMPASSABILITY_WINTER_CLOSURE = 6;
+	// undecodable sub cause code, use main cause code instead.
+	TEC105_IMPASSABILITY_UNDECODABLE_IMPASSABILITY = 255;
+}
+// This enumeration type is used when the road surface is slippery.
+enum Tec106_SlipperyRoad {
+
+	TEC106_SLIPPERYROAD_RFU = 0;
+	// Heavy frost is making road surface slippery.
+	TEC106_SLIPPERYROAD_HEAVY_FROST_ON_ROAD = 1;
+	// A fuel spill is making road surface slippery.
+	TEC106_SLIPPERYROAD_FUEL_ON_ROAD = 2;
+	// Mud is making the road surface slippery.
+	TEC106_SLIPPERYROAD_MUD_ON_ROAD = 3;
+	// Snow is making the road surface slippery.
+	TEC106_SLIPPERYROAD_SNOW_ON_ROAD = 4;
+	// Ice is making the road surface slippery.
+	TEC106_SLIPPERYROAD_ICE_ON_ROAD = 5;
+	// Black ice is making the road surface slippery.
+	TEC106_SLIPPERYROAD_BLACK_ICE_ON_ROAD = 6;
+	// Oil on the road is making the road surface slippery.
+	TEC106_SLIPPERYROAD_OIL_ON_ROAD = 7;
+	// Loose chippings are making the road surface slippery.
+	TEC106_SLIPPERYROAD_LOOSE_CHIPPINGS = 8;
+	// Black ice, which is forming instantly when freezing rain hits the road, is making the road surface slippery.
+	TEC106_SLIPPERYROAD_INSTANT_BLACK_ICE = 9;
+	// Although the roads have been salted, the surface may still be slippery.
+	TEC106_SLIPPERYROAD_ROADS_SALTED = 10;
+	// undecodable sub cause code, use main cause code instead.
+	TEC106_SLIPPERYROAD__UNDECODABLE_SLIPPERY_ROAD = 255;
+}
+// This enumeration type is used when fire is affecting the traffic flow.
+enum Tec108_Fire {
+
+	TEC108_FIRE_RFU = 0;
+	// A major fire is causing a problem for traffic.
+	TEC108_FIRE_MAJOR_FIRE = 1;
+	// A forest fire is causing a problem for traffic.
+	TEC108_FIRE_FOREST_FIRE = 2;
+	// undecodable sub cause code, use main cause code instead.
+	TEC108_FIRE_UNDECODABLE_FIRE = 255;
+}
+// This enumeration type is used when environmental conditions are causing problems and require additional caution by the driver.
+enum Tec109_HazardousDrivingConditions {
+
+	TEC109_HAZARDOUSDRIVINGCONDITIONS_RFU = 0;
+	// Falling rocks are causing a danger to traffic.
+	TEC109_HAZARDOUSDRIVINGCONDITIONS_ROCKFALLS = 1;
+	// There is danger to traffic resulting from earthquake damage.
+	TEC109_HAZARDOUSDRIVINGCONDITIONS_EARTHQUAKE_DAMAGE = 2;
+	// A sewer has collapsed.
+	TEC109_HAZARDOUSDRIVINGCONDITIONS_SEWER_COLLAPSE = 3;
+	// Subsidence has affected the road condition..
+	TEC109_HAZARDOUSDRIVINGCONDITIONS_SUBSIDENCE = 4;
+	// Snow drifts are causing a hazard to drivers.
+	TEC109_HAZARDOUSDRIVINGCONDITIONS_SNOW_DRIFTS = 5;
+	// Damage caused by a storm is causing hazardous conditions for drivers.
+	TEC109_HAZARDOUSDRIVINGCONDITIONS_STORM_DAMAGE = 6;
+	// Traffic is affected by a burst pipe.
+	TEC109_HAZARDOUSDRIVINGCONDITIONS_BURST_PIPE = 7;
+	// A danger to traffic exists resulting from a volcano eruption.
+	TEC109_HAZARDOUSDRIVINGCONDITIONS_VOLCANO_ERUPTION = 8;
+	// There is a danger to traffic due to falling ice.
+	TEC109_HAZARDOUSDRIVINGCONDITIONS_FALLING_ICE = 9;
+	// undecodable sub cause code, use main cause code instead.
+	TEC109_HAZARDOUSDRIVINGCONDITIONS_UNDECODABLE_HAZARDOUS_DRIVING_CONDITIONS = 255;
+}
+// This enumeration type is used when objects on the road are impeding traffic or may be a hazard to traffic.
+enum Tec110_ObjectsOnTheRoad {
+
+	TEC110_OBJECTSONTHEROAD_RFU = 0;
+	// Part of a load being carried has fallen into the roadway.
+	TEC110_OBJECTSONTHEROAD_SHED_LOAD = 1;
+	// Part of a vehicle has become detached and fallen into the roadway.
+	TEC110_OBJECTSONTHEROAD_PARTS_OF_VEHICLES = 2;
+	// A vehicle has shed parts of its tyres, which are in the roadway.
+	TEC110_OBJECTSONTHEROAD_PARTS_OF_TYRES = 3;
+	// Objects on the roadway are of a large size that a vehicle cannot drive over, and so will need to drive around them.
+	TEC110_OBJECTSONTHEROAD_LARGE_OBJECTS = 4;
+	// Fallen trees or branches have fallen onto the roadway
+	TEC110_OBJECTSONTHEROAD_FALLEN_TREES = 5;
+	// Hub caps are lying on the roadway.
+	TEC110_OBJECTSONTHEROAD_HUB_CAPS = 6;
+	// There is an abandoned or stationary vehicle on the roadway.
+	TEC110_OBJECTSONTHEROAD_STATIONARY_VEHICLE = 7;
+	// undecodable sub cause code, use main cause code instead.
+	TEC110_OBJECTSONTHEROAD_UNDECODABLE_OBJECTS_ON_THE_ROAD = 255;
+}
+// This enumeration type is used when there is a danger to the driver from animals on the roadway.
+enum Tec111_AnimalsOnRoadway {
+
+	TEC111_ANIMALSONROADWAY_RFU = 0;
+	// There is a danger from wild animals on the roadway. ('wild' animals are not 'controlled' by humans)
+	TEC111_ANIMALSONROADWAY_WILD_ANIMALS = 1;
+	// IA herd of animals is on the roadway. It is to be expected that the herd is being controlled by a human, who will expect the driver to stop until the herd has been moved on.
+	TEC111_ANIMALSONROADWAY_HERD_OF_ANIMALS = 2;
+	// Small animals are on the roadway.
+	TEC111_ANIMALSONROADWAY_SMALL_ANIMALS = 3;
+	// Large animals are on the roadway, which are a danger to drivers and may cause considerable damage. Drivers should slow down and proceed with caution.
+	TEC111_ANIMALSONROADWAY_LARGE_ANIMALS = 4;
+	// undecodable sub cause code, use main cause code instead.
+	TEC111_ANIMALSONROADWAY_UNDECODABLE_ANIMALS_ON_ROADWAY = 255;
+}
+// This enumeration type is used when people or people with unauthorized vehicles are on the roadway.
+enum Tec112_PeopleOnRoadway {
+
+	TEC112_PEOPLEONROADWAY_RFU = 0;
+	// Children are  on the road.
+	TEC112_PEOPLEONROADWAY_CHILDREN_ON_ROADWAY = 1;
+	// A cyclist is on the road where cycling is prohibited.
+	TEC112_PEOPLEONROADWAY_CYCLISTS_ON_ROADWAY = 2;
+	// A moped rider is riding on a road where moped riding is prohibited.
+	TEC112_PEOPLEONROADWAY_MOPED_RIDER_ON_ROADWAY = 3;
+	// undecodable sub cause code, use main cause code instead.
+	TEC112_PEOPLEONROADWAY_UNDECODABLE_PEOPLE_ON_ROADWAY = 255;
+}
+// This enumeration type is used when a broken down vehicle is on the roadway, causing a danger or obstruction hazard.
+enum Tec113_BrokenDownVehicles {
+
+	TEC113_BROKENDOWNVEHICLES_RFU = 0;
+	// A broken down vehicle is also on fire
+	TEC113_BROKENDOWNVEHICLES_BROKEN_DOWN_VEHICLE_ON_FIRE = 1;
+	// An unlit vehicle is causing a hazard..
+	TEC113_BROKENDOWNVEHICLES_BROKEN_DOWN_UNLIT_VEHICLE = 2;
+	// undecodable sub cause code, use main cause code instead.
+	TEC113_BROKENDOWNVEHICLES_UNDECODABLE_BROKEN_DOWN_VEHICLE = 255;
+}
+// This enumeration type is used when accident rescue and recovery work is in progress, drivers should take extra care and slow down.
+enum Tec115_RescueAndRecoveryWorkInProgress {
+
+	TEC115_RESCUEANDRECOVERYWORKINPROGRESS_RFU = 0;
+	// Emergency vehicles are at the scene of an accident.
+	TEC115_RESCUEANDRECOVERYWORKINPROGRESS_EMERGENCY_VEHICLES = 1;
+	// A rescue helicopter is landing at or near the scene of an accident.
+	TEC115_RESCUEANDRECOVERYWORKINPROGRESS_RESCUE_HELICOPTER_LANDING = 2;
+	// There is ongoing police activity
+	TEC115_RESCUEANDRECOVERYWORKINPROGRESS_POLICE_ACTIVITY_ONGOING = 3;
+	// Emergency medical crews are at the scene.
+	TEC115_RESCUEANDRECOVERYWORKINPROGRESS_MEDICAL_EMERGENCY_ONGOING = 4;
+	// A child abduction has occurred (Amber Alert).
+	TEC115_RESCUEANDRECOVERYWORKINPROGRESS_CHILD_ABDUCTION_IN_PROGRESS = 5;
+	// undecodable sub cause code, use main cause code instead.
+	TEC115_RESCUEANDRECOVERYWORKINPROGRESS_UNDECODABLE_RESCUE_AND_RECOVERY_WORK_IN_PROGRESS = 255;
+}
+// This enumeration type is used when additional restrictions or regulations may be imposed. (If a road is closed then the traffic flow effect shall be set to 'no_traffic_flow'.)
+enum Tec116_RegulatoryMeasure {
+
+	TEC116_REGULATORYMEASURE_RFU = 0;
+	// A security alert has been declared, possibly resulting in restrictions on traffic movement and delays.
+	TEC116_REGULATORYMEASURE_SECURITY_ALERT = 1;
+	// A contagious disease is affecting the location potentially resulting in movement restriction being applied.
+	TEC116_REGULATORYMEASURE_CONTAGIOUS_DISEASE = 2;
+	// An environmental incident has occurred, potentially resulting in a movement restriction being applied.
+	TEC116_REGULATORYMEASURE_ENVIRONMENTAL = 3;
+	// A smog alert has been declared due to pollution levels in the air.
+	TEC116_REGULATORYMEASURE_SMOG_ALERT = 4;
+	// Traffic may flow in only one direction at a time. commonly known as 'Single Alternate Line Traffic'
+	TEC116_REGULATORYMEASURE_BATCH_SERVICE_IN_PROGRESS = 5;
+	// The regulatory authorities have closed the road for whatever reason
+	TEC116_REGULATORYMEASURE_ROAD_CLOSED_BY_THE_REGULATORY_AUTHORITIES = 6;
+	// undecodable sub cause code, use main cause code instead.
+	TEC116_REGULATORYMEASURE_UNDECODABLE_REGULATORY_MEASURE = 255;
+}
+// This enumeration type is used when extreme weather conditions are causing a hazard to drivers.
+enum Tec117_ExtremeWeatherConditions {
+
+	TEC117_EXTREMEWEATHERCONDITIONS_RFU = 0;
+	// Strong winds, especially cross winds, are causing a driving hazard
+	TEC117_EXTREMEWEATHERCONDITIONS_STRONG_WINDS = 1;
+	// Hail is falling that could potentially damage cars.
+	TEC117_EXTREMEWEATHERCONDITIONS_DAMAGING_HAIL = 2;
+	// Winds in excess of 118km/h
+	TEC117_EXTREMEWEATHERCONDITIONS_HURRICANE = 3;
+	// Thunderstorm may affect driving conditions.
+	TEC117_EXTREMEWEATHERCONDITIONS_THUNDERSTORM = 4;
+	// Destructive wind likely to make driving dangerous
+	TEC117_EXTREMEWEATHERCONDITIONS_TORNADO = 5;
+	// Strong winds combined with snow reducing visibility to less than a few hundred metres.
+	TEC117_EXTREMEWEATHERCONDITIONS_BLIZZARD = 6;
+	// undecodable sub cause code, use main cause code instead.
+	TEC117_EXTREMEWEATHERCONDITIONS_UNDECODABLE_EXTREME_WEATHER_CONDITION = 255;
+}
+// This enumeration type is used to warn drivers of reduced visibility , which may require a speed reduction and other measures.
+enum Tec118_VisibilityReduced {
+
+	TEC118_VISIBILITYREDUCED_RFU = 0;
+	// Fog is reducing visibility.
+	TEC118_VISIBILITYREDUCED_VISIBILITY_REDUCED_DUE_TO_FOG = 1;
+	// Smoke is reducing visibility.
+	TEC118_VISIBILITYREDUCED_VISIBILITY_REDUCED_DUE_TO_SMOKE = 2;
+	// Heavy snowfall is reducing visibility.
+	TEC118_VISIBILITYREDUCED_VISIBILITY_REDUCED_DUE_TO_HEAVY_SNOWFALL = 3;
+	// Heavy rain is reducing visibility.
+	TEC118_VISIBILITYREDUCED_VISIBILITY_REDUCED_DUE_TO_HEAVY_RAIN = 4;
+	// Heavy hail is reducing visibility.
+	TEC118_VISIBILITYREDUCED_VISIBILITY_REDUCED_DUE_TO_HEAVY_HAIL = 5;
+	// Glare from low sun is reducing visibility. (usually applies to specific direction of travel)
+	TEC118_VISIBILITYREDUCED_VISIBILITY_REDUCED_DUE_TO_LOW_SUN_GLARE = 6;
+	// A sandstorm is reducing visibility.
+	TEC118_VISIBILITYREDUCED_VISIBILITY_REDUCED_DUE_TO_SANDSTORMS = 7;
+	// A swarm of insects is reducing visibility.
+	TEC118_VISIBILITYREDUCED_VISIBILITY_REDUCED_DUE_TO_SWARMS_OF_INSECTS = 8;
+	// undecodable sub cause code, use main cause code instead.
+	TEC118_VISIBILITYREDUCED_UNDECODABLE_VISIBILITY_REDUCED = 255;
+}
+// This enumeration type is used in case that increased precipitation is causing hazard to drivers.
+enum Tec119_Precipitation {
+
+	TEC119_PRECIPITATION_RFU = 0;
+	// Heavy rain is causing a hazard to drivers.
+	TEC119_PRECIPITATION_HEAVY_RAIN = 1;
+	// Heavy snowfall is causing a hazard to drivers.
+	TEC119_PRECIPITATION_HEAVY_SNOWFALL = 2;
+	// Soft hail (or snow pellets) is causing a hazard to drivers.
+	TEC119_PRECIPITATION_SOFT_HAIL = 3;
+	// undecodable sub cause code, use main cause code instead.
+	TEC119_PRECIPITATION_UNDECODABLE_PRECIPITATION = 255;
+}
+// This enumeration type is used when persons acting irresponsibly are causing a danger to motorists.
+enum Tec120_RecklessPersons {
+
+	TEC120_RECKLESSPERSONS_RFU = 0;
+	// A motorist is driving in a reckless manner. Drivers may need to take evasive action.
+	TEC120_RECKLESSPERSONS_RECKLESS_DRIVER = 1;
+	// Someone is discharging a weapon on or near the roadway.
+	TEC120_RECKLESSPERSONS_GUNFIRE_ON_ROAD = 2;
+	// Drivers are potentially in danger due to objects being thrown at or  into the path of vehicles
+	TEC120_RECKLESSPERSONS_PERSONS_THROWING_OBJECTS = 3;
+	// undecodable sub cause code, use main cause code instead.
+	TEC120_RECKLESSPERSONS_UNDECODABLE_RECKLESS_PERSONS = 255;
+}
+// This enumeration type is used when an organised event is affecting the normal driving progress.
+enum Tec123_MajorEvent {
+
+	TEC123_MAJOREVENT_RFU = 0;
+	// A sports event is affecting traffic.
+	TEC123_MAJOREVENT_SPORTS_EVENT = 1;
+	// A demonstration is affecting traffic.
+	TEC123_MAJOREVENT_DEMONSTRATION = 2;
+	// A demonstration, with added presence of vehicles, is affecting traffic.
+	TEC123_MAJOREVENT_DEMONSTRATION_WITH_VEHICLES = 3;
+	// Traffic is affected by a concert, due to people arriving or leaving the venue.
+	TEC123_MAJOREVENT_CONCERT = 4;
+	// A fair is affecting the traffic.
+	TEC123_MAJOREVENT_FAIR = 5;
+	// Military training is affecting traffic.
+	TEC123_MAJOREVENT_MILITARY_TRAINING = 6;
+	// Emergency Services training is affecting traffic.
+	TEC123_MAJOREVENT_EMERGENCY_TRAINING = 7;
+	// A festival is affecting traffic.
+	TEC123_MAJOREVENT_FESTIVAL = 8;
+	// A procession is affecting traffic.
+	TEC123_MAJOREVENT_PROCESSION = 9;
+	// undecodable sub cause code, use main cause code instead.
+	TEC123_MAJOREVENT_UNDECODABLE_MAJOR_EVENT = 255;
+}
+// This enumeration type is used when a transport service is not operating.
+enum Tec124_ServiceNotOperating {
+
+	TEC124_SERVICENOTOPERATING_RFU = 0;
+	// A ferry service is not operating.
+	TEC124_SERVICENOTOPERATING_FERRY_SERVICE_NOT_OPERATING = 1;
+	// An air service is not operating.
+	TEC124_SERVICENOTOPERATING_AIR_SERVICE_NOT_OPERATING = 2;
+	// A train service is not operating.
+	TEC124_SERVICENOTOPERATING_TRAIN_SERVICE_NOT_OPERATING = 3;
+	// A bus service is not operating.
+	TEC124_SERVICENOTOPERATING_BUS_SERVICE_NOT_OPERATING = 4;
+	// undecodable sub cause code, use main cause code instead.
+	TEC124_SERVICENOTOPERATING_UNDECODABLE_SERVICE_NOT_OPERATING = 255;
+}
+// This enumeration type is used when a service is operational, but is temporarily not usable.
+enum Tec125_ServiceNotUseable {
+
+	TEC125_SERVICENOTUSEABLE_RFU = 0;
+	// A fuel station is temporarily closed.
+	TEC125_SERVICENOTUSEABLE_FUEL_STATION_CLOSED = 1;
+	// A service area is temporarily closed.
+	TEC125_SERVICENOTUSEABLE_SERVICE_AREA_CLOSED = 2;
+	// A service area is busy; there may be long waiting times.
+	TEC125_SERVICENOTUSEABLE_SERVICE_AREA_BUSY = 3;
+	// A parking area/car park is full.
+	TEC125_SERVICENOTUSEABLE_PARKING_FULL = 4;
+	// A parking area or car park is closed
+	TEC125_SERVICENOTUSEABLE_CAR_PARK_CLOSED = 5;
+	// undecodable sub cause code, use main cause code instead.
+	TEC125_SERVICENOTUSEABLE_UNDECODABLE_SERVICE_NOT_USABLE = 255;
+}
+// This enumeration type is used when slow moving vehicles are impeding normal progress.
+enum Tec126_SlowMovingVehicles {
+
+	TEC126_SLOWMOVINGVEHICLES_RFU = 0;
+	// Slow moving maintenance vehicles are affecting traffic or may be causing a hazard.
+	TEC126_SLOWMOVINGVEHICLES_SLOW_MOVING_MAINTENANCE_VEHICLE = 1;
+	// Drivers are slowing to look at an accident or incident on opposite carriageway, or by side of the road, thus causing a hazard.
+	TEC126_SLOWMOVINGVEHICLES_VEHICLES_SLOWING_TO_LOOK_AT_ACCIDENT = 2;
+	// A vehicle carrying an abnormal load is affecting traffic or causing a hazard.
+	TEC126_SLOWMOVINGVEHICLES_ABNORMAL_LOAD = 3;
+	// A vehicle carrying a wide load is affecting traffic or causing a hazard, possibly restricting the ability to pass the vehicle.
+	TEC126_SLOWMOVINGVEHICLES_ABNORMAL_WIDE_LOAD = 4;
+	// A convoy on the road is affecting traffic.
+	TEC126_SLOWMOVINGVEHICLES_CONVOY = 5;
+	// A snowplough is on the road.
+	TEC126_SLOWMOVINGVEHICLES_SNOWPLOUGH = 6;
+	// A de-icing vehicle is on the road.
+	TEC126_SLOWMOVINGVEHICLES_DE_ICING = 7;
+	// A vehicle is salting/gritting the road.
+	TEC126_SLOWMOVINGVEHICLES_SALTING_VEHICLES = 8;
+	// undecodable sub cause code, use main cause code instead.
+	TEC126_SLOWMOVINGVEHICLES_UNDECODABLE_SLOW_MAINTENANCE_VEHICLE = 255;
+}
+// This enumeration type is used when the end of queue of vehicles could cause an accident.
+enum Tec127_DangerousEndOfQueue {
+
+	TEC127_DANGEROUSENDOFQUEUE_RFU = 0;
+	// Used when the end of a queue is in a dangerous situation or unexpected location causing an added hazard for approaching drivers.
+	TEC127_DANGEROUSENDOFQUEUE_SUDDEN_END_OF_QUEUE = 1;
+	// Used when a queue has formed over a hill and may not be visible to approaching drivers.
+	TEC127_DANGEROUSENDOFQUEUE_QUEUE_OVER_HILL = 2;
+	// Used when a queue has formed around a bend in the road and may not be visible to approaching drivers.
+	TEC127_DANGEROUSENDOFQUEUE_QUEUE_AROUND_BEND = 3;
+	// Used when a queue has formed in a tunnel and may not be visible to approaching drivers.
+	TEC127_DANGEROUSENDOFQUEUE_QUEUE_IN_TUNNEL = 4;
+	// undecodable sub cause code, use main cause code instead.
+	TEC127_DANGEROUSENDOFQUEUE_UNDECODABLE_DANGEROUS_END_OF_QUEUE = 255;
+}
+// This enumeration type is used to warn that a risk of fire exists. Open fire or glow should be extinguished.
+enum Tec128_RiskOfFire {
+
+	TEC128_RISKOFFIRE_RFU = 0;
+	// A risk of fire exists due to a fuel leak.
+	TEC128_RISKOFFIRE_LEAKAGE_OF_FUEL = 1;
+	// A risk of fire exists due to a gas leak.
+	TEC128_RISKOFFIRE_LEAKAGE_OF_GAS = 2;
+	// undecodable sub cause code, use main cause code instead.
+	TEC128_RISKOFFIRE_UNDECODABLE_RISK_OF_FIRE = 255;
+}
+// Used to advise of longer than usual delays.
+enum Tec129_TimeDelay {
+
+	TEC129_TIMEDELAY_RFU = 0;
+	// There is a delay at the frontier or border point
+	TEC129_TIMEDELAY_TIME_DELAY_AT_FRONTIER = 1;
+	// There is a delay at the ferry port.
+	TEC129_TIMEDELAY_TIME_DELAY_AT_FERRY_PORT = 2;
+	// There is a delay at the car-train terminal.
+	TEC129_TIMEDELAY_TIME_DELAY_AT_VEHICLE_ON_RAIL_TERMINAL = 3;
+	// undecodable sub cause code, use main cause code instead.
+	TEC129_TIMEDELAY_UNDECODABLE_TIME_DELAY = 255;
+}
+// This enumeration type is used to advise of time delays due to police checks.
+enum Tec130_PoliceCheckpoint {
+
+	TEC130_POLICECHECKPOINT_RFU = 0;
+	// A delay is occurring at a regular police checkpoint
+	TEC130_POLICECHECKPOINT_PERMANENT_POLICE_CHECKPOINT = 1;
+	// A delay is occurring at a temporary police checkpoint.
+	TEC130_POLICECHECKPOINT_TEMPORARY_POLICE_CHECKPOINT = 2;
+	// undecodable sub cause code, use main cause code instead.
+	TEC130_POLICECHECKPOINT_UNDECODABLE_POLICE_CHECKPOINT = 255;
+}
+// This enumeration type is used when roadside equipment is malfunctioning.
+enum Tec131_MalfunctioningRoadsideEquipment {
+
+	TEC131_MALFUNCTIONINGROADSIDEEQUIPMENT_RFU = 0;
+	// A level crossing (rail-road crossing in USA) is malfunctioning.
+	TEC131_MALFUNCTIONINGROADSIDEEQUIPMENT_ROAD_RAIL_CROSSING_FAILURE = 1;
+	// Tunnel ventilation is malfunctioning.
+	TEC131_MALFUNCTIONINGROADSIDEEQUIPMENT_TUNNEL_VENTILATION_NOT_WORKING = 2;
+	// Traffic control signals are malfunctioning.
+	TEC131_MALFUNCTIONINGROADSIDEEQUIPMENT_TRAFFIC_CONTROL_SIGNALS_WORKING_INCORRECTLY = 3;
+	// Emergency telephones are malfunctioning.
+	TEC131_MALFUNCTIONINGROADSIDEEQUIPMENT_EMERGENCY_TELEPHONES_NOT_WORKING = 4;
+	// Automatic payment lanes are not working.
+	TEC131_MALFUNCTIONINGROADSIDEEQUIPMENT_AUTOMATIC_PAYMENT_LANES_NOT_WORKING = 5;
+	// undecodable sub cause code, use main cause code instead.
+	TEC131_MALFUNCTIONINGROADSIDEEQUIPMENT_UNDECODABLE_MALFUNCTIONING_ROADSIDE_EQUIPMENT = 255;
+}
+// The SubAdviceType defines the generic type applying different tables appropriate to the different mainAdviceCodes
+// Valid entries for attributes of this type are listed in the tables:
+// tec202:OvertakingNotAllowed
+// tec203:DrivingNotAllowed
+// tec207:GiveWayToVehiclesFromBehind
+// tec208:FollowDiversion
+// tec213:DriveCarefully
+// tec214:DoNotLeaveYourVehicle.
+// tec216:UseTollLanes
+// Note:
+// In the case a client device is unable to decode a subadvice code the original advice is to be used.
+message Tec200_SubAdviceType {
+	oneof Tec200_SubAdviceType_opt {
+		Tec213_DriveCarefully tec213_DriveCarefully = 1;
+		Tec216_UseTollLanes tec216_UseTollLanes = 2;
+		Tec203_DrivingNotAllowed tec203_DrivingNotAllowed = 3;
+		Tec208_FollowDiversion tec208_FollowDiversion = 4;
+		Tec202_OvertakingNotAllowed tec202_OvertakingNotAllowed = 5;
+		Tec214_DoNotLeaveYourVehicle tec214_DoNotLeaveYourVehicle = 6;
+		Tec207_GiveWayToVehiclesFromBehind tec207_GiveWayToVehiclesFromBehind = 7;
+	}
+}
+// This enumeration type is used to advise that overtaking is not allowed; vehicles should remain in line.
+enum Tec202_OvertakingNotAllowed {
+
+	TEC202_OVERTAKINGNOTALLOWED_RFU = 0;
+	// Overtaking lanes are those closest to the central reservation (median) on highways. On single carriageway roads, the overtaking lane  may be a central lane used by traffic in both directions.
+	TEC202_OVERTAKINGNOTALLOWED_DO_NOT_USE_OVERTAKING_LANES = 1;
+	// The overtaking lane(s) should not be used, but the crawler lane is available for use.
+	TEC202_OVERTAKINGNOTALLOWED_OVERTAKING_NOT_ALLOWED_DRIVE_ON_CRAWLER_LANE = 2;
+	// The overtaking lane(s) should not be used, drivers should use the left most lane only.
+	TEC202_OVERTAKINGNOTALLOWED_OVERTAKING_NOT_ALLOWED_DRIVE_ON_LEFT_MOST_LANE = 3;
+	// The overtaking lane(s) should not be used, drivers should use the right most lane only.
+	TEC202_OVERTAKINGNOTALLOWED_OVERTAKING_NOT_ALLOWED_DRIVE_ON_RIGHT_MOST_LANE = 4;
+	// undecodable sub advice code, use main advice code instead.
+	TEC202_OVERTAKINGNOTALLOWED_UNDECODABLE_OVERTAKING_NOT_ALLOWED = 255;
+}
+// This enumeration type is used to advise drivers to find a safe place to pull over and stop.
+enum Tec203_DrivingNotAllowed {
+
+	TEC203_DRIVINGNOTALLOWED_RFU = 0;
+	// Driving is prohibited; drivers should pull over at next safe place.
+	TEC203_DRIVINGNOTALLOWED_DRIVING_NOT_ALLOWED_FIND_A_SAFE_PLACE_TO_PULL_OVER_AND_STOP_THE_VEHICLE = 1;
+	// undecodable sub advice code, use main advice code instead.
+	TEC203_DRIVINGNOTALLOWED_UNDECODABLE_DRIVING_NOT_ALLOWED = 255;
+}
+// This enumeration type is used to advise drivers to make way for vehicles approaching from behind, and allow them to pass.
+enum Tec207_GiveWayToVehiclesFromBehind {
+
+	TEC207_GIVEWAYTOVEHICLESFROMBEHIND_RFU = 0;
+	// Drivers are asked to pull aside and make way for rescue vehicles approaching from behind, which need to pass.
+	TEC207_GIVEWAYTOVEHICLESFROMBEHIND_MAKE_WAY_FOR_RESCUE_VEHICLES_TO_PASS = 1;
+	// Drivers are asked to pull aside and make way for service vehicles approaching from behind, which need to pass.
+	TEC207_GIVEWAYTOVEHICLESFROMBEHIND_MAKE_WAY_FOR_SERVICE_VEHICLES_TO_PASS = 2;
+	// undecodable sub advice code, use main advice code instead.
+	TEC207_GIVEWAYTOVEHICLESFROMBEHIND_UNDECODABLE_MAKE_WAY_FOR_VEHICLES_FROM_BEHIND = 255;
+}
+// This enumeration type is used to advise that drivers should follow a diversion.
+enum Tec208_FollowDiversion {
+
+	TEC208_FOLLOWDIVERSION_RFU = 0;
+	// Drivers should follow a signed diversion.
+	TEC208_FOLLOWDIVERSION_FOLLOW_DIVERSION_SIGNS = 1;
+	// undecodable sub advice code, use main advice code instead.
+	TEC208_FOLLOWDIVERSION_UNDECODABLE_FOLLOW_DIVERSION = 255;
+}
+// This enumeration type is used to advise drivers that extra care should be taken.
+enum Tec213_DriveCarefully {
+
+	TEC213_DRIVECAREFULLY_RFU = 0;
+	// A dangerous situation exists on an entry slip road.
+	TEC213_DRIVECAREFULLY_DRIVE_CAREFULLY_DANGEROUS_SITUATION_ON_ENTRY_SLIP_ROAD = 1;
+	// A dangerous situation exists on an exit slip road.
+	TEC213_DRIVECAREFULLY_DRIVE_CAREFULLY_DANGEROUS_SITUATION_ON_EXIT_SLIP_ROAD = 2;
+	// Ice has built up on cable structure at side of road, and there is a danger of cables breaking, or ice falling.
+	TEC213_DRIVECAREFULLY_DRIVE_CAREFULLY_ICE_BUILDUP_ON_CABLE_STRUCTURE = 3;
+	// undecodable sub advice code, use main advice code instead.
+	TEC213_DRIVECAREFULLY_UNDECODABLE_DRIVE_CAREFULLY = 255;
+}
+// This enumeration type is used to advise drivers not to leave their vehicles.
+enum Tec214_DoNotLeaveYourVehicle {
+
+	TEC214_DONOTLEAVEYOURVEHICLE_RFU = 0;
+
+	TEC214_DONOTLEAVEYOURVEHICLE_DO_NOT_LEAVE_YOUR_VEHICLE = 1;
+
+	TEC214_DONOTLEAVEYOURVEHICLE_DO_NOT_LEAVE_YOUR_VEHICLE_CLOSE_WINDOWS = 2;
+	// undecodable sub advice code, use main advice code instead.
+	TEC214_DONOTLEAVEYOURVEHICLE_UNDECODABLE_DO_NOT_LEAVE_YOUR_VEHICLE = 255;
+}
+// This enumeration type is used to advise about use of toll lanes.
+enum Tec216_UseTollLanes {
+
+	TEC216_USETOLLLANES_RFU = 0;
+	// Manual payment toll lanes should be used.
+	TEC216_USETOLLLANES_USE_MANUAL_PAYMENT_TOLL_LANES = 1;
+	// Automatic payment toll lanes should be used.
+	TEC216_USETOLLLANES_USE_AUTOMATIC_PAYMENT_TOLL_LANES = 2;
+	// undecodable sub advice code, use main advice code instead.
+	TEC216_USETOLLLANES_UNDECODABLE_USE_TOLL_LANES = 255;
+}

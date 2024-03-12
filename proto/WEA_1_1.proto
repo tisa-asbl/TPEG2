@@ -1,0 +1,1033 @@
+syntax = "proto3";
+
+package tpeg.wea;
+import "TPEG/LRC_3_0.proto";
+import "TPEG/MMC_1_1.proto";
+
+import "TPEG/TPEGDataTypes_2_1.proto";
+// Each WEA message is associated with a single location and contains one or more weather reports (excluding the case of a cancellation).
+message WeatherMessage {
+	// Message Management Container
+	MMCSwitch mmt = 100;
+	// Weather Information (always included except for cancellation of a message)
+	optional WeatherInformation weatherInfo = 101;
+	// Location Referencing Container (always included except for cancellation of a message)
+	optional tpeg.lrc.LocationReferencingContainer loc = 102;
+}
+// A Weather report can be either a simple single level report or can be made into a hierarchy of reports associated to increasingly smaller time periods.
+message WeatherInformation {
+	// Defines the geographical significance  or  "spatial extent" of the report.
+	Wea011_GeoSignificance geographicalSignificance = 1;
+	// Contains the report data, defines what type of period it covers and additional more detailed reports for smaller time periods if required.
+	WeatherReport weatherReport = 100;
+	// Links to related WEA reports or other TPEG Messages
+	repeated ReportLinkInfo reportLinks = 101;
+	// Allows linkage to web based content
+	repeated WebContentLinks webContent = 102;
+}
+// This component provides the top level weatherItem of the report and allows subsequent lower levels to be defined. A multiple level hierarchy of time periods can be defined.
+message WeatherReport {
+	// Defines the time "extent" of a report.
+	Wea000_ReportType reportType = 1;
+	// Main Details of Weather Report
+	WeatherItem weatherDefinition = 100;
+	// Optional next level Report
+	repeated WeatherReport moreDetailedReport = 101;
+}
+// This component defines the main content for the weather Report; including descriptive and statistical parts.
+message WeatherItem {
+	// This provides an optional period for the report.
+	repeated Wea001_Period period = 1;
+	// Weather description provides a qualitative description for the weather report. 
+	// Any number of elements may be selected from the element tables.
+	repeated Element weatherDescription = 2;
+	// Start defines the specific time of day the period of this weather report item begins.
+	// typically hours and minutes 
+	//  if Stop is not defined then Start is used  to define a nominal time of the report . For Example - 2pm sunny; 4pm rain; 6pm showers, sunny intervals.
+	optional tpeg.datatypes.TimePoint start = 3;
+	// Stop defines the explicit end time of the period for the weather Item.
+	optional tpeg.datatypes.TimePoint stop = 4;
+	// This provides ability to report the main date for a report (suitable for a daily forecast)
+	// Typically Date or  Date &amp; Month
+	optional tpeg.datatypes.TimePoint date = 5;
+	// Title for the WEA Report 
+	// e.g. "Warwickshire Forecast", "UK Weather" Multiplicity allows multiple languages to be carried.
+	repeated tpeg.datatypes.LocalisedShortString reportName = 6;
+	// Additional text for weather related information.
+	// Maybe advice or description of major weather problem or maybe specific information related to weather at specific function/event. (for  example: for the  London Marathon ..... "Due to high temperatures ensure you drink plenty of liquid if you are running today" )
+	// Multiplicity allows multiple languages to be carried.
+	repeated tpeg.datatypes.LocalisedLongString reportText = 7;
+	// Outlook trend provides a description of how the weather is expected to develop over a following period
+	optional OutlookTrend outlook = 100;
+	// Weather statistics are provided as required to provide quantitative details for the weather report.
+	optional WeatherStatistics statistics = 101;
+	// Warnings for specific weather
+	repeated WeatherWarning warning = 102;
+	// Weather description provides a qualitative description for the weather report. 
+	// Any number of elements may be selected from the element tables.
+	repeated AltitudeElements weatherAltitudeDescription = 103;
+}
+// Statistics are provided to give a quantitative description of the weather status or forecast.
+message WeatherStatistics {
+	// AirQuality
+	optional Wea008_AirQuality airQuality = 1;
+	// Cloud cover.
+	// An okta is a measurement used to describe cloud cover. Sky conditions are estimated in terms of how many eighths of the sky are obscured by cloud, ranging from completely clear, 0 oktas, through to completely overcast, 8 oktas.
+	// valid range 0 to 8.
+	optional uint32 cloudCover = 2;
+	// Barometric Pressure is hPascal ( this is nominally equivalent to mBar, which is still preferred unit in practice for weather forecast, although not actually SI units)
+	optional uint32 pressure = 3;
+	// How pressure will (or has) changed.
+	optional Wea004_PressureTendency pressureTendency = 4;
+	// Rate of rainfall in mm/hour.
+	optional float rainfallRate = 5;
+	// Total rainfall for defined period  in mm.
+	optional float rainfallTotal = 6;
+	// Description of how big the waves are.
+	optional Wea006_SeaState seaState = 7;
+	// depth of fallen snow (mm)
+	optional float snowDepth = 8;
+	// hours of sunshine for defined period (either recorded in past or expected in future)
+	optional float sunshine = 9;
+	// General Temperature degrees Celsius  (to define current or expected temp.)
+	optional float temp = 10;
+	// Maximum temp (degrees Celsius) expected over defined period (for daily report type this is typically maximum temperature expected during daytime)
+	optional float tempMax = 11;
+	// Minimum temp (degrees Celsius) expected over defined period (for daily report type this is typically minimum temperature expected during night time)
+	optional float tempMin = 12;
+	// subjective visibility description
+	optional Wea005_Visibility visibility = 13;
+	// nominal visibility in km
+	optional float visibilityDistance = 14;
+	// Feels Like defines what the temperature will be perceived as to a person , due to wind chill or humidity; Temperature "that it feels like" on exposed skin , due to wind/humidity (Celsius)
+	optional float feelsLike = 15;
+	// Wind Direction based on cardinal, ordinal and sub-ordinal directions of the compass.
+	optional Wea003_Direction windDirection = 16;
+	// How the direction of the wind is changing
+	optional Wea012_WindDirectionTrend windDirectionTrend = 17;
+	// wind speed (m/sec)
+	optional uint32 windSpeed = 18;
+	// Defines how wind speed is changing
+	optional Wea013_WindSpeedTrend windSpeedTrend = 19;
+	// Height of base of lowest clouds above the ground
+	optional uint32 cloudbase = 20;
+	// Relative humidity.
+	// Amount of water vapour in the air.
+	optional uint32 relativeHumidity = 21;
+	// The temperature to which a given body of air must be cooled for it to condense (Linked to Relative Humidity) In degrees Celsius
+	optional float dewPointTemp = 22;
+	// WHO measure of Ultraviolet Radiation
+	optional Wea010_UVIndex uvIndex = 23;
+	// Time of sunrise
+	optional tpeg.datatypes.TimePoint sunrise = 24;
+	// Time of sunset
+	optional tpeg.datatypes.TimePoint sunset = 25;
+
+	optional Wea007_PollenCount pollenCount = 26;
+}
+// Provides highlighted warning about specific types of weather. For example "Warning strong wind"
+message WeatherWarning {
+	// Warning level.
+	Wea009_WarningLevel warningLevel = 1;
+	// Item taken from element tables for which a warning is provided.
+	repeated Element warningElements = 2;
+	// If true the warning is provided more than 24 hours before expected bad weather period. If false warning is related to time within 24 hrs of the report period. This allows "today's" report to include a warning about "tomorrow's" weather allowing people to prepare if needed.
+	bool isEarlyWarning = 3;
+	// Additional information for Warnings
+	repeated tpeg.datatypes.LocalisedLongString warningText = 4;
+}
+// Altitude Elements allows an altitude to be asigned to an element or set of elements and or statistics. This allows reporting of altitude specific weather such as snow above a certain altitude or temperature at altitude.
+message AltitudeElements {
+	// Defines that the reported weather elements are found at this altitude. (Not to be combined with aboveAltitude or belowAltitude attributes)
+	optional uint32 atAltitude = 1;
+	// Defines that the reported weather elements are found above this altitude.
+	// (e.g. snow above 3000m)
+	optional uint32 aboveAltitude = 2;
+	// Defines that the reported weather elements are found below this altitude.
+	// (e.g. humid below 1000m)
+	optional uint32 belowAltitude = 3;
+	// Weather elements associated with the defined altitude.
+	repeated Element altElements = 4;
+	// Statistical information associated with the defined altitude.
+	optional WeatherStatistics altStatistics = 100;
+}
+// This component provides an indication of how the weather will change over a given period.
+// eg
+// "becoming wetter [by midweek]"
+// "becoming warmer [by later today]"
+// "becoming cooler  [by Thursday]"
+// "becoming  more humid [by this afternoon]"
+message OutlookTrend {
+	// How the weather is expected to progress
+	Wea002_TrendItem trend = 1;
+	// Over what period the trend is defined
+	optional Wea001_Period trendTimescale = 2;
+}
+// Linked Messages provide a method to reference other WEA messages. This is used to provide a hierarchy of WEA messages based on child or parent locations.
+// For example : A message may have a location representing a region such as "The Midlands", it's Parent may be the "UK"  , and several child messages may reference "Warwickshire", "West Midlands", "Staffordshire" ...etc.
+message ReportLinkInfo {
+	// Link to Parent Message
+	optional LinkedMessage parentMessage = 1;
+	// Link to Child Message
+	repeated LinkedMessage childMessage = 2;
+	// Link to Message related to this weather report, maybe either another WEA report or a different TPEG APP completely; for example: Reference to TEC message detailing a bridge closure due to high winds or flooding.
+	repeated LinkedMessage relatedMessage = 3;
+}
+// Allows linkage to web based content , such as weather maps, plots. Rain radar, cloud or temperature maps.
+// Type of data may be defined by ContentType;  
+// Additional title descriptions may be signalled using text.
+message WebContentLinks {
+	// URL of on-line data content
+	string url = 1;
+	// Type of content, may be used to set icon in HMI for link
+	optional Wea014_ContentType contentType = 2;
+	// Used to add additional info relating to the link if required also if Content Type not appropriate then this can be used to send other short description of data type.
+	repeated tpeg.datatypes.LocalisedShortString contentText = 3;
+}
+// Link Info for Child and Parent messages is done using the messageID.
+// For linking to other Applications the Related Message includes COID and SID.
+message LinkedMessage {
+	// The related messageID
+	uint32 linkedMessageID = 1;
+	// ContentID of the TPEG service component defined for the linked message.
+	uint32 contentID = 2;
+	// The TPEG service ID related to the linked message;(this may be originatorSID or carrierSID) This may be excluded if linked message is in same service.
+	optional tpeg.datatypes.ServiceIdentifier originatorSID = 3;
+	// Application ID of target message (if in other application) ; default is =5 (TEC) so this may be omitted if the linked message is of this application type.
+	optional uint32 applicationID = 4;
+}
+// The switch construct for MMC messages
+message MMCSwitch {
+	oneof MMCSwitch_opt {
+		tpeg.mmc.MMCMessagePart mMCMessagePart = 1;
+		tpeg.mmc.MMCMasterMessage mMCMasterMessage = 2;
+		tpeg.mmc.MessageManagementContainer messageManagementContainer = 3;
+	}
+}
+// Elements are selected from the Element tables, to provide the qualitative description of the weather report or warning type
+message Element {
+	// Table number
+	Wea100_ElementType subTableType = 1;
+	// Entry from table
+	Wea099_ElementSubTable subTableValue = 2;
+}
+
+enum Wea000_ReportType {
+	// Specific Report Type not defined
+	WEA000_REPORTTYPE_UNDEFINED = 0;
+	// any report for more than a day
+	WEA000_REPORTTYPE_OVERVIEW = 1;
+	// report is for a specific day
+	WEA000_REPORTTYPE_DAILY = 2;
+	// report is for part of a day
+	WEA000_REPORTTYPE_SUB_DAILY = 3;
+	// Report is for a small part of a day defined by specified time intervals
+	WEA000_REPORTTYPE_TIMED = 4;
+	// report is for providing weather data in the past
+	WEA000_REPORTTYPE_HISTORICAL = 5;
+}
+// Textual definition of validity Period;  more descriptive than explicit time definition, preferred for HMI display to user. 
+// For example if a report is valid from 6:00 till 12:00 one might want to display "tomorrow morning"
+enum Wea001_Period {
+	// Report is describing current conditions
+	WEA001_PERIOD_NOW = 0;
+	// Report is describing conditions for morning of the current day
+	WEA001_PERIOD_THIS_MORNING = 1;
+	// Report is describing conditions for afternoon of the current day
+	WEA001_PERIOD_THIS_AFTERNOON = 2;
+	// Report is describing conditions for evening of the current day
+	WEA001_PERIOD_THIS_EVENING = 3;
+	// Report is describing conditions for night-time of the current day
+	WEA001_PERIOD_TONIGHT = 4;
+	// Report is describing conditions for the current day
+	WEA001_PERIOD_TODAY = 5;
+	// Report is describing conditions for the following day
+	WEA001_PERIOD_TOMORROW = 6;
+	// Report is describing conditions for the following morning
+	WEA001_PERIOD_TOMORROW_MORNING = 7;
+	// Report is describing conditions for the following afternoon
+	WEA001_PERIOD_TOMORROW_AFTERNOON = 8;
+	// Report is describing conditions for the following evening
+	WEA001_PERIOD_TOMORROW_EVENING = 9;
+	// Report is describing conditions for  night-time of the following day
+	WEA001_PERIOD_TOMORROW_NIGHT = 10;
+	// Report is describing conditions for the following  2-3  days; recommended to be clarified with start or stop times or with sub reports detailing the days.
+	WEA001_PERIOD_NEXT_FEW_DAYS = 11;
+	// Report is describing conditions for  following  weekday period
+	WEA001_PERIOD_MONDAY_FRIDAY = 12;
+	// Report is describing conditions for the beginning of the weekday period; Recommended to be clarified with start stop time or with sub reports detailing the days.
+	WEA001_PERIOD_BEGINNING_OF_THE_WEEK = 13;
+	// Report is describing conditions for the middle day(s) of the week, should be clarified with start stop time or with sub reports detailing the days. Typically Tuesday, Wednesday, Thursday
+	WEA001_PERIOD_MIDWEEK = 14;
+	// Report is describing conditions for last few days of the week, should be clarified with start stop time or with sub reports detailing the days. Typically Thursday and  Friday  and maybe even Saturday/Sunday
+	WEA001_PERIOD_END_OF_THE_WEEK = 15;
+	// Report is describing conditions for the weekend; this may be clarified with start stop time or with sub reports detailing the days. Typically just Saturday and Sunday but may include Friday as this helps people plan their "weekend" get-away.
+	WEA001_PERIOD_WEEKEND = 16;
+	// Early morning, before daylight
+	WEA001_PERIOD_BEFORE_DAWN = 17;
+	// Describing conditions at sunrise
+	WEA001_PERIOD_DAWN = 18;
+	// Describing conditions at around sunset
+	WEA001_PERIOD_DUSK = 19;
+	// Describing conditions in morning of a specific day. Day defined in other "period" , multiple Periods may be used in 1 Report , to allow " Sunday evening" , "Monday  morning"  "Monday afternoon"
+	WEA001_PERIOD_MORNING = 20;
+	// Describing conditions during smaller parts of the day
+	WEA001_PERIOD_EARLY_MORNING = 21;
+	// Describing conditions during smaller parts of the day
+	WEA001_PERIOD_MID_MORNING = 22;
+	// Describing conditions during smaller parts of the day
+	WEA001_PERIOD_LATE_MORNING = 23;
+	// Describing conditions in afternoon of a specific day. Day defined in other "period" , multiple Periods may be used in 1 Report , to allow " Sunday evening" , "Monday morning"  "Monday afternoon"
+	WEA001_PERIOD_AFTERNOON = 24;
+	// Describing conditions during smaller parts of the day
+	WEA001_PERIOD_EARLY_AFTERNOON = 25;
+	// Describing conditions during smaller parts of the day
+	WEA001_PERIOD_MID_AFTERNOON = 26;
+	// Describing conditions during smaller parts of the day
+	WEA001_PERIOD_LATE_AFTERNOON = 27;
+	// Describing conditions in evening of a specific day. Day defined in other "period" , multiple Periods may be used in 1 Report , to allow " Sunday evening" , "Monday morning"  "Monday afternoon"
+	WEA001_PERIOD_EVENING = 28;
+	// Describing conditions during smaller parts of the day
+	WEA001_PERIOD_EARLY_EVENING = 29;
+	// Describing conditions during smaller parts of the day
+	WEA001_PERIOD_MID_EVENING = 30;
+	// Describing conditions during smaller parts of the day
+	WEA001_PERIOD_LATE_EVENING = 31;
+	// Describing conditions at night for a specific day. Day defined in other "period" , multiple Periods may be used in 1 Report , to allow
+	// " Sunday evening" , "Monday morning",  "Monday afternoon", " Tuesday night"
+	WEA001_PERIOD_NIGHT = 32;
+	// Describing conditions during smaller parts of the day
+	WEA001_PERIOD_LATE_NIGHT = 33;
+	// Describing conditions typically to covering evening + night + early morning
+	WEA001_PERIOD_OVERNIGHT = 34;
+	// Describing conditions for current week
+	WEA001_PERIOD_THIS_WEEK = 35;
+	// Describing conditions for next week
+	WEA001_PERIOD_NEXT_WEEK = 36;
+	// Describing conditions for very near short term period; maybe related to fast changing or hazardous weather.
+	WEA001_PERIOD_DURING_NEXT_HOUR = 37;
+	// Describing conditions for near short term period;
+	WEA001_PERIOD_DURING_NEXT_COUPLE_OF_HOURS = 38;
+	// Describing conditions over the next 3-4 hours
+	WEA001_PERIOD_DURING_NEXT_FEW_HOURS = 39;
+	// describing conditions "later" as apposed to "now" ,also can be used with other periods ;  "later Tuesday"
+	WEA001_PERIOD_LATER = 40;
+	// later half of the day
+	WEA001_PERIOD_LATER_TODAY = 41;
+	// later in the night time
+	WEA001_PERIOD_LATER_TONIGHT = 42;
+	// later half of tomorrow
+	WEA001_PERIOD_LATER_TOMORROW = 43;
+	// Specific day
+	WEA001_PERIOD_MONDAY = 44;
+	// Specific day
+	WEA001_PERIOD_TUESDAY = 45;
+	// Specific day
+	WEA001_PERIOD_WEDNESDAY = 46;
+	// Specific day
+	WEA001_PERIOD_THURSDAY = 47;
+	// Specific day
+	WEA001_PERIOD_FRIDAY = 48;
+	// Specific day
+	WEA001_PERIOD_SATURDAY = 49;
+	// Specific day
+	WEA001_PERIOD_SUNDAY = 50;
+}
+// Description of how the weather will generally progress/develop over the near future.
+enum Wea002_TrendItem {
+	// Amount of cloud expected to increase
+	WEA002_TRENDITEM_CLOUDIER = 0;
+	// Clearer weather (e.g. less cloud or fog or rain); clearer skies
+	WEA002_TRENDITEM_CLEARER = 1;
+	// Temperature expected to increase slightly
+	WEA002_TRENDITEM_WARMER = 2;
+	// Temperature expected to decrease slightly
+	WEA002_TRENDITEM_COOLER = 3;
+	// Temperature expected to increase
+	WEA002_TRENDITEM_HOTTER = 4;
+	// Temperature expected to decrease
+	WEA002_TRENDITEM_COLDER = 5;
+	// Amount of precipitation expected to increase
+	WEA002_TRENDITEM_WETTER = 6;
+	// Amount of precipitation expected to decrease
+	WEA002_TRENDITEM_DRIER = 7;
+	// Wind expected to increase
+	WEA002_TRENDITEM_WINDIER = 8;
+	// Wind expected to decrease
+	WEA002_TRENDITEM_CALMER = 9;
+	// Weather expected to become more likely to create storms, increased wind , rain etc
+	WEA002_TRENDITEM_STORMIER = 10;
+	// Weather expected to be colder , maybe with more wind.
+	WEA002_TRENDITEM_FRESHER = 11;
+	// Humidity expected to increase
+	WEA002_TRENDITEM_MORE_HUMID = 12;
+	// Humidity expected to decrease
+	WEA002_TRENDITEM_LESS_HUMID = 13;
+	// Amount of sunshine expected to increase
+	WEA002_TRENDITEM_SUNNIER = 14;
+	// Weather expected to become changeable, maybe with showers then sun, then rain or wind. No similar pattern over the period. Different each day /part of day.
+	WEA002_TRENDITEM_MORE_UNSETTLED = 15;
+	// Expected to  be less cold, less windy; generally more pleasant
+	WEA002_TRENDITEM_MILDER = 16;
+}
+// Direction reports from which direction the weather element comes from. Normally used for Wind; For example, a northerly wind (N) blows from the North to the South; but can also indicate where other elements approach from "Snow from SE"
+enum Wea003_Direction {
+	// No specific direction prevails, usually when winds are light direction may change quickly.
+	WEA003_DIRECTION_VARIABLE = 0;
+	// North
+	WEA003_DIRECTION_N = 1;
+	// NorthNorthEast
+	WEA003_DIRECTION_NNE = 2;
+	// NorthEast
+	WEA003_DIRECTION_NE = 3;
+	// EastNorthEast
+	WEA003_DIRECTION_ENE = 4;
+	// East
+	WEA003_DIRECTION_E = 5;
+	// EastSouthEast
+	WEA003_DIRECTION_ESE = 6;
+	// SouthEast
+	WEA003_DIRECTION_SE = 7;
+	// SouthSouthEast
+	WEA003_DIRECTION_SSE = 8;
+	// South
+	WEA003_DIRECTION_S = 9;
+	// SouthSouthWest
+	WEA003_DIRECTION_SSW = 10;
+	// SouthWest
+	WEA003_DIRECTION_SW = 11;
+	// WestSouthWest
+	WEA003_DIRECTION_WSW = 12;
+	// West
+	WEA003_DIRECTION_W = 13;
+	// WestNorthWest
+	WEA003_DIRECTION_WNW = 14;
+	// NorthWest
+	WEA003_DIRECTION_NW = 15;
+	// NorthNorthWest
+	WEA003_DIRECTION_NNW = 16;
+}
+// How the pressure changes over a period.
+enum Wea004_PressureTendency {
+	// No change
+	WEA004_PRESSURETENDENCY_STATIC = 0;
+	// Pressure increasing slowly
+	WEA004_PRESSURETENDENCY_RISING_SLOWLY = 1;
+	// Pressure increasing
+	WEA004_PRESSURETENDENCY_RISING = 2;
+	// Pressure reducing
+	WEA004_PRESSURETENDENCY_FALLING = 3;
+	// Pressure reducing slowly
+	WEA004_PRESSURETENDENCY_FALLING_SLOWLY = 4;
+	// High Pressure weather system blocking usual changes to weather.
+	WEA004_PRESSURETENDENCY_BLOCKING_HIGH_PRESSURE = 5;
+	// Low pressure weather system blocking usual changes to weather
+	WEA004_PRESSURETENDENCY_BLOCKING_LOW_PRESSURE = 6;
+}
+// subjective visibility description
+enum Wea005_Visibility {
+	// Visibility more than 8km
+	WEA005_VISIBILITY_GOOD = 0;
+	// Visibility between 3 km and 8km
+	WEA005_VISIBILITY_MODERATE = 1;
+	// Visibility between 1km and 3km
+	WEA005_VISIBILITY_POOR = 2;
+	// Visibility less than 1,000 metres
+	WEA005_VISIBILITY_VERY_POOR = 3;
+	// Nominal Zero visibility , generally anything less than 100m
+	WEA005_VISIBILITY_ZERO_ = 4;
+}
+// Defines how rough or calm the sea is  related to wave height 
+// (definition From UK MetOffice web site)
+enum Wea006_SeaState {
+	// Wave height less than 0.5 m
+	WEA006_SEASTATE_SMOOTH = 0;
+	// Wave height of 0.5 to 1.25 m
+	WEA006_SEASTATE_SLIGHT = 1;
+	// Wave height of 1.25 to 2.5 m
+	WEA006_SEASTATE_MODERATE = 2;
+	// Wave height of 2.5 to 4.0 m
+	WEA006_SEASTATE_ROUGH = 3;
+	// Wave height of 4.0 to 6.0 m
+	WEA006_SEASTATE_VERY_ROUGH = 4;
+	// Wave height of 6.0 to 9.0 m
+	WEA006_SEASTATE_HIGH = 5;
+	// Wave height of 9.0 to 14.0 m
+	WEA006_SEASTATE_VERY_HIGH = 6;
+	// Wave height more than 14.0 m
+	WEA006_SEASTATE_PHENOMENAL = 7;
+}
+// Pollen count is the measurement of the number of grains of pollen in a cubic metre of air. The higher the number, the more people will suffer if they are allergic to pollen. (Ranges taken from UK MetOffice website)
+enum Wea007_PollenCount {
+	// less than 30 pollen grains per cubic metre of air
+	WEA007_POLLENCOUNT_LOW = 0;
+	// 30-49 pollen grains per cubic metre of air
+	WEA007_POLLENCOUNT_MODERATE = 1;
+	// 50-149 pollen grains per cubic metre of air
+	WEA007_POLLENCOUNT_HIGH = 2;
+	// 150 or more pollen grains per cubic metre of air
+	WEA007_POLLENCOUNT_VERY_HIGH = 3;
+}
+// Air quality is defined as a measure of the condition of air relative to the requirements of one or more biotic species and/or to any human need or purpose. Air quality indices (AQI) are usually numbers used by government agencies to characterize the quality of the air at a given location. As the AQI increases, an increasingly large percentage of the population is likely to experience increasingly severe adverse health effects. Air quality index values are divided into ranges, and each range is assigned a descriptor and a colour code. Standardized public health advisories are associated with each AQI range. An agency might also encourage members of the public to take public transportation or work from home when AQI levels are high.
+// (No International standard exists, therefore this is an amalgamation of several systems.)
+enum Wea008_AirQuality {
+	// No health impacts
+	WEA008_AIRQUALITY_GOOD = 0;
+	// Mild effects, unlikely to require action, may be noticed amongst sensitive individuals.
+	WEA008_AIRQUALITY_MODERATELY_GOOD = 1;
+	// may have harmful impacts on patients and members of sensitive groups.
+	WEA008_AIRQUALITY_UNHEALTHY_FOR_SENSITIVE_GROUPS = 2;
+	// may cause the general public some minor irritation / unpleasant feelings
+	WEA008_AIRQUALITY_UNHEALTHY = 3;
+	// may have a serious impact on patients and members of sensitive groups in case of acute exposure. Widespread symptoms of irritation in the healthy population.
+	WEA008_AIRQUALITY_VERY_UNHEALTHY = 4;
+	// Generally healthy individuals will notice some discomfort.
+	WEA008_AIRQUALITY_HAZARDOUS = 5;
+	// Serious health risks for general public. May require emergency action or evacuation.
+	WEA008_AIRQUALITY_VERY_HAZARDOUS = 6;
+}
+// Provides specific weather warnings. Warning of mild disruption, up to more serious potentially damaging and dangerous weather situations.
+enum Wea009_WarningLevel {
+	// No specific warnings issued.
+	WEA009_WARNINGLEVEL_NO_WARNINGS = 0;
+	// The weather is not expected to have any noticeable impact on travel infrastructure or travel plans, but outdoor events may be affected due to generally poor weather. (raining /windy)
+	WEA009_WARNINGLEVEL_INCLEMENT_WEATHER = 1;
+	// Mild disruption to travel plans may be caused, (may be some high bridges closed due to strong wind, or slow traffic due to poor visibility from fog ) Travellers should be aware and ensure they access the latest weather forecast for up to date weather information. Some delays should be expected due to slower traffic.
+	// Outdoor events may be disrupted or cancelled.
+	WEA009_WARNINGLEVEL_BAD_WEATHER = 2;
+	// Travellers should take precautionary action and remain extra vigilant. Follow orders and any advice given by authorities under all circumstances. Travellers should ensure they access the latest weather forecast before travelling. Some public transport may be affected/cancelled. Expect significant disruption to daily routines.
+	// Travellers should avoid all non-essential journeys; but
+	// if they must make a journey , should carry emergency food/ clothing/ blankets etc.
+	WEA009_WARNINGLEVEL_SEVERE_WEATHER = 3;
+	// Do not travel unless required to do so by authorities. Evacuation may be required. Expect damage to buildings. Residents should seek appropriate shelter.
+	WEA009_WARNINGLEVEL_DESTRUCTIVE_WEATHER = 4;
+}
+// UV Index as defined by the World Health Organisation.(WHO)
+// The UVI is a measure of the level of UV radiation. The values of the index range from zero upward - the higher the UVI, the greater the potential for damage to the skin and eye, and the less time it takes for harm to occur. The UVI is an important vehicle to alert people about the need to use sun protection.
+enum Wea010_UVIndex {
+
+	WEA010_UVINDEX_RFU = 0;
+	// WHO Colour code GREEN
+	WEA010_UVINDEX_1_LOW = 1;
+	// WHO Colour code GREEN
+	WEA010_UVINDEX_2_LOW = 2;
+	// WHO Colour code YELLOW
+	WEA010_UVINDEX_3_MODERATE = 3;
+	// WHO Colour code YELLOW
+	WEA010_UVINDEX_4_MODERATE = 4;
+	// WHO Colour code YELLOW
+	WEA010_UVINDEX_5_MODERATE = 5;
+	// WHO Colour code ORANGE
+	WEA010_UVINDEX_6_HIGH = 6;
+	// WHO Colour code ORANGE
+	WEA010_UVINDEX_7_HIGH = 7;
+	// WHO Colour code RED
+	WEA010_UVINDEX_8_VERY_HIGH = 8;
+	// WHO Colour code RED
+	WEA010_UVINDEX_9_VERY_HIGH = 9;
+	// WHO Colour code RED
+	WEA010_UVINDEX_10_VERY_HIGH = 10;
+	// WHO Colour code PURPLE
+	WEA010_UVINDEX_11_EXTREME = 11;
+}
+
+enum Wea011_GeoSignificance {
+	// Not defined type
+	WEA011_GEOSIGNIFICANCE_UNDEFINED = 0;
+	// Report covers a whole continent or major part of a continental landmass
+	WEA011_GEOSIGNIFICANCE_CONTINENTAL = 1;
+	// Report covers multiple countries
+	WEA011_GEOSIGNIFICANCE_INTERNATIONAL = 2;
+	// Report covers the whole or major part of a single country
+	WEA011_GEOSIGNIFICANCE_NATIONAL = 3;
+	// Report covers a large part of a country (e.g. northern, southern, central)
+	WEA011_GEOSIGNIFICANCE_AREA = 4;
+	// Report covers a specific part of a country defined by specific boundaries  (East Midlands, Black Forrest)
+	WEA011_GEOSIGNIFICANCE_REGIONAL = 5;
+	// Report for specific city and surrounding area
+	WEA011_GEOSIGNIFICANCE_CITY = 6;
+	// Report for small area (e.g. north part of a city)
+	WEA011_GEOSIGNIFICANCE_LOCAL = 7;
+	// Specific forecast related to small local area,  typically area of 5-10 Sq. km
+	WEA011_GEOSIGNIFICANCE_ULTRA_LOCAL = 8;
+	// Report is intended for a specific event
+	WEA011_GEOSIGNIFICANCE_EVENT = 9;
+}
+// How wind direction is changing.
+enum Wea012_WindDirectionTrend {
+	// No change in direction
+	WEA012_WINDDIRECTIONTREND_NOT_CHANGING = 0;
+	// Veering ; a change in wind direction in a clockwise sense (e.g.,  east to southeast to south );  the opposite of backing.
+	WEA012_WINDDIRECTIONTREND_VEERING = 1;
+	// Backing ; a change in wind direction in a counter clockwise sense (e.g., south to southeast to east);  the opposite of veering.
+	WEA012_WINDDIRECTIONTREND_BACKING = 2;
+}
+// How wind speed is changing
+enum Wea013_WindSpeedTrend {
+	// Wind Strength expected to remain same throughout period
+	WEA013_WINDSPEEDTREND_CONSTANT = 0;
+	// Wind speed increasing
+	WEA013_WINDSPEEDTREND_INCREASING = 1;
+	// Wind Speed Increasing quickly
+	WEA013_WINDSPEEDTREND_INCREASING_QUICKLY = 2;
+	// Wind Speed decreasing
+	WEA013_WINDSPEEDTREND_DECREASING = 3;
+	// Wind Speed decreasing quickly
+	WEA013_WINDSPEEDTREND_DECREASING_QUICKLY = 4;
+}
+
+enum Wea014_ContentType {
+	// content type not specified, or of type not defined in available types default value, if attribute not included
+	WEA014_CONTENTTYPE_UNDEFINED = 0;
+	// used to provide link to general weather map picture/content
+	WEA014_CONTENTTYPE_GENERAL_SITUATION = 1;
+	// For use when linking to cloud coverage pictures
+	WEA014_CONTENTTYPE_CLOUD = 2;
+	// used when linking to temperature maps
+	WEA014_CONTENTTYPE_TEMPERATURE = 3;
+	// used when linking to pressure maps
+	WEA014_CONTENTTYPE_PRESSURE = 4;
+	// used when linking to wind maps
+	WEA014_CONTENTTYPE_WIND = 5;
+	// used when linking to rainfall maps
+	WEA014_CONTENTTYPE_RAIN = 6;
+}
+// Abstracted Table for Element Sub-types used in Element data structure
+message Wea099_ElementSubTable {
+	oneof Wea099_ElementSubTable_opt {
+		Wea201_ElementQualifierProbability wea201_ElementQualifierProbability = 1;
+		Wea101_RainElements wea101_RainElements = 2;
+		Wea107_FrostElements wea107_FrostElements = 3;
+		Wea110_HazardElements wea110_HazardElements = 4;
+		Wea200_ElementQualifier wea200_ElementQualifier = 5;
+		Wea108_SunshineCloudElements wea108_SunshineCloudElements = 6;
+		Wea103_SleetHailElements wea103_SleetHailElements = 7;
+		Wea104_WindElements wea104_WindElements = 8;
+		Wea105_StormElements wea105_StormElements = 9;
+		Wea106_FogElements wea106_FogElements = 10;
+		Wea109_TemperatureElements wea109_TemperatureElements = 11;
+		Wea102_SnowElements wea102_SnowElements = 12;
+	}
+}
+// Element Type (Part of Element Data Structure) defines from what table the element is taken. Grouped with other similar elements.
+enum Wea100_ElementType {
+
+	WEA100_ELEMENTTYPE_RFU = 0;
+
+	WEA100_ELEMENTTYPE_WEA101_RAINELEMENTS = 1;
+
+	WEA100_ELEMENTTYPE_WEA102_SNOWELEMENTS = 2;
+
+	WEA100_ELEMENTTYPE_WEA103_SLEETHAILELEMENTS = 3;
+
+	WEA100_ELEMENTTYPE_WEA104_WINDELEMENTS = 4;
+
+	WEA100_ELEMENTTYPE_WEA105_STORMELEMENTS = 5;
+
+	WEA100_ELEMENTTYPE_WEA106_FOGELEMENTS = 6;
+
+	WEA100_ELEMENTTYPE_WEA107_FROSTELEMENTS = 7;
+
+	WEA100_ELEMENTTYPE_WEA108_SUNSHINE_CLOUD = 8;
+
+	WEA100_ELEMENTTYPE_WEA109_TEMPERATUREELEMENTS = 9;
+
+	WEA100_ELEMENTTYPE_WEA110_HAZARDS = 10;
+
+	WEA100_ELEMENTTYPE_WEA200_ELEMENTQUALIFIER = 20;
+
+	WEA100_ELEMENTTYPE_WEA201_ELEMENTQUALIFIERPROBABILITY = 21;
+}
+// Selection of different types of precipitation
+enum Wea101_RainElements {
+
+	WEA101_RAINELEMENTS_RAIN = 0;
+
+	WEA101_RAINELEMENTS_WET = 1;
+
+	WEA101_RAINELEMENTS_LIGHT_RAIN = 2;
+
+	WEA101_RAINELEMENTS_DRIZZLE = 3;
+
+	WEA101_RAINELEMENTS_LIGHT_DRIZZLE = 4;
+
+	WEA101_RAINELEMENTS_HEAVY_RAIN = 5;
+
+	WEA101_RAINELEMENTS_SHOWERS = 6;
+
+	WEA101_RAINELEMENTS_BLUSTERY_SHOWERS = 7;
+
+	WEA101_RAINELEMENTS_INTERMITTENT_SHOWERS = 8;
+
+	WEA101_RAINELEMENTS_THUNDERY_SHOWERS = 9;
+
+	WEA101_RAINELEMENTS_THUNDERY_RAIN = 10;
+	// Rain that freezes on impact (sometimes called "ice rain")
+	WEA101_RAINELEMENTS_FREEZING_RAIN = 11;
+
+	WEA101_RAINELEMENTS_DAMP = 12;
+}
+// Selection of winter weather elements.
+enum Wea102_SnowElements {
+
+	WEA102_SNOWELEMENTS_SNOW = 0;
+
+	WEA102_SNOWELEMENTS_LIGHT_SNOW = 1;
+
+	WEA102_SNOWELEMENTS_LIGHT_SNOW_SHOWERS = 2;
+
+	WEA102_SNOWELEMENTS_SNOW_SHOWERS = 3;
+
+	WEA102_SNOWELEMENTS_HEAVY_SNOW_SHOWERS = 4;
+
+	WEA102_SNOWELEMENTS_DRIFTING_SNOW = 5;
+
+	WEA102_SNOWELEMENTS_LOW_DRIFTING_SNOW = 6;
+
+	WEA102_SNOWELEMENTS_BLOWING_SNOW = 7;
+
+	WEA102_SNOWELEMENTS_LIGHT_BLOWING_SNOW = 9;
+
+	WEA102_SNOWELEMENTS_LOCALISED_SNOW_SHOWERS = 10;
+
+	WEA102_SNOWELEMENTS_BLIZZARD_ = 11;
+
+	WEA102_SNOWELEMENTS_DIAMOND_DUST = 12;
+
+	WEA102_SNOWELEMENTS_SNOW_GRAINS = 13;
+
+	WEA102_SNOWELEMENTS_SNOW_CRYSTALS = 14;
+}
+
+enum Wea103_SleetHailElements {
+
+	WEA103_SLEETHAILELEMENTS_SLEET_OR_HAIL_ = 0;
+
+	WEA103_SLEETHAILELEMENTS_SLEET = 1;
+
+	WEA103_SLEETHAILELEMENTS_LIGHT_SLEET = 2;
+
+	WEA103_SLEETHAILELEMENTS_SLEET_SHOWERS = 3;
+
+	WEA103_SLEETHAILELEMENTS_HEAVY_SLEET_SHOWERS = 4;
+
+	WEA103_SLEETHAILELEMENTS_HAIL = 5;
+
+	WEA103_SLEETHAILELEMENTS_LIGHT_HAIL = 6;
+
+	WEA103_SLEETHAILELEMENTS_HAIL_SHOWERS = 7;
+
+	WEA103_SLEETHAILELEMENTS_HEAVY_HAIL_SHOWERS = 8;
+
+	WEA103_SLEETHAILELEMENTS_DAMAGING_HAIL = 9;
+
+	WEA103_SLEETHAILELEMENTS_LARGE_HAIL = 10;
+}
+// Wind related elements, including Beaufort scale definition
+enum Wea104_WindElements {
+	// Beaufort Scale  0 :wind &lt;1km/h
+	WEA104_WINDELEMENTS_CALM = 0;
+	// Beaufort Scale  1 :wind up to 5.5 kph
+	WEA104_WINDELEMENTS_LIGHT_AIR = 1;
+	// Beaufort Scale 2  :wind up to 11 kph
+	WEA104_WINDELEMENTS_LIGHT_BREEZE = 2;
+	// Beaufort Scale 3  :wind up to 19 kph
+	WEA104_WINDELEMENTS_GENTLE_BREEZE = 3;
+	// Beaufort Scale 4  :wind up to 28 kph
+	WEA104_WINDELEMENTS_MODERATE_BREEZE = 4;
+	// Beaufort Scale 5  :wind up to 38 kph
+	WEA104_WINDELEMENTS_FRESH_BREEZE = 5;
+	// Beaufort Scale 6  :wind up to 49 kph
+	WEA104_WINDELEMENTS_STRONG_BREEZE = 6;
+	// Beaufort Scale 7  :wind up to 61 kph
+	WEA104_WINDELEMENTS_MODERATE_GALE = 7;
+	// Beaufort Scale 8  :wind up to 74 kph
+	WEA104_WINDELEMENTS_GALE = 8;
+	// Beaufort Scale 9  :wind up to 88 kph
+	WEA104_WINDELEMENTS_STRONG_GALE = 9;
+	// Beaufort Scale 10  :wind up to 102 kph
+	WEA104_WINDELEMENTS_STORM = 10;
+	// Beaufort Scale 11  :wind up to 117 kph
+	WEA104_WINDELEMENTS_VIOLENT_STORM = 11;
+	// Beaufort Scale 12  :wind up to &gt;117 kph
+	WEA104_WINDELEMENTS_HURRICANE = 12;
+
+	WEA104_WINDELEMENTS_WINDY = 13;
+
+	WEA104_WINDELEMENTS_STRONG_WIND = 14;
+
+	WEA104_WINDELEMENTS_MODERATE_WIND = 15;
+
+	WEA104_WINDELEMENTS_VERY_STRONG_WIND = 16;
+
+	WEA104_WINDELEMENTS_BLUSTERY_WIND = 17;
+
+	WEA104_WINDELEMENTS_VARIABLE_WIND = 18;
+
+	WEA104_WINDELEMENTS_LIGHT_AND_VARIABLE_WIND = 19;
+
+	WEA104_WINDELEMENTS_NORTHERLY = 20;
+
+	WEA104_WINDELEMENTS_EASTERLY = 21;
+
+	WEA104_WINDELEMENTS_SOUTHERLY = 22;
+
+	WEA104_WINDELEMENTS_WESTERLY = 23;
+
+	WEA104_WINDELEMENTS_NORTH_EASTERLY = 24;
+
+	WEA104_WINDELEMENTS_SOUTH_EASTERLY = 25;
+
+	WEA104_WINDELEMENTS_SOUTH_WESTERLY = 26;
+
+	WEA104_WINDELEMENTS_NORTH_WESTERLY = 27;
+}
+// Elements describing different types of storms.
+enum Wea105_StormElements {
+
+	WEA105_STORMELEMENTS_STORM = 0;
+	// When surface temperatures are below freezing, with a thick layer of above freezing air remains above ground level, rain can fall into freezing layer and freeze on impact into a "glaze" known as freezing rain.
+	WEA105_STORMELEMENTS_ICE_STORM = 1;
+	// A storm with thunder and lightening normally accompanied by heavy rain.
+	WEA105_STORMELEMENTS_THUNDERSTORM = 2;
+	// A derecho (from Spanish: meaning "straight") is a widespread and long-lived, violent convectively induced straight-line windstorm that is associated with a fast-moving band of severe thunderstorms
+	WEA105_STORMELEMENTS_DERECHO = 3;
+	// A fire that attains such intensity that it creates and maintains it's own wind system. Large bush fires often create a firestorm.
+	WEA105_STORMELEMENTS_FIRESTORM = 4;
+	// Sudden onset of large wind increase
+	WEA105_STORMELEMENTS_SQUALL = 5;
+	// Storm formed as a closed circulation round a centre of low pressure.
+	WEA105_STORMELEMENTS_TROPICAL_CYCLONE = 7;
+	// Storm that precipitates chunks of ice.
+	WEA105_STORMELEMENTS_HAILSTORM = 8;
+	// A violent destructive wind storm occurring on Land
+	WEA105_STORMELEMENTS_TORNADO = 9;
+	// same as tropical cyclone
+	WEA105_STORMELEMENTS_HURRICANE = 10;
+	// Storm where dust is picked up and carried into the air. Common in arid and semi arid regions.
+	WEA105_STORMELEMENTS_DUST_STORM = 11;
+	// Storm where sand is picked up and carried into the air. Common in desert areas. Similar to dust storm
+	WEA105_STORMELEMENTS_SAND_STORM = 12;
+}
+// Types of Fog/Mist
+enum Wea106_FogElements {
+
+	WEA106_FOGELEMENTS_FOG = 0;
+	// fog in small areas across defined area
+	WEA106_FOGELEMENTS_PATCHY_FOG = 1;
+	// Fog in larger patches in some areas (generally larger continuous patches than "patchy fog")
+	WEA106_FOGELEMENTS_LOCALISED_FOG = 2;
+	// Fog in low lying areas , typically in valleys near rivers.
+	WEA106_FOGELEMENTS_LOW_LYING_FOG = 3;
+	// Fog that is thin layer close to ground level, typically 6 ft thick , so does not obstruct general horizontal visibility except close to ground level. Often causes driving difficulties due to drivers visibility being reduced , but vertically sky looks clear.
+	WEA106_FOGELEMENTS_SHALLOW_FOG = 4;
+	// Thick fog causing low visibility throughout the area.
+	WEA106_FOGELEMENTS_DENSE_FOG = 5;
+	// The term "freezing fog" refers to fog where water vapour is super-cooled, filling the air with small ice crystals similar to very light snow. It seems to make the fog "tangible", as if one could "grab a handful".
+	WEA106_FOGELEMENTS_FREEZING_FOG = 6;
+
+	WEA106_FOGELEMENTS_DENSE_FREEZING_FOG = 7;
+	// light fog
+	WEA106_FOGELEMENTS_MIST = 8;
+	// light patchy fog
+	WEA106_FOGELEMENTS_PATCHY_MIST = 9;
+	// Sometimes called Sea smoke , warm air passing over warmer water causes a mist /fog to occur
+	WEA106_FOGELEMENTS_SEA_MIST = 10;
+	// Allows description of how fog is changing over the period,
+	// Fog thinning or dense fog thickening
+	WEA106_FOGELEMENTS_THINNING = 11;
+	// Allows description of how fog is changing over the period,
+	// Fog thinning or dense fog thickening
+	WEA106_FOGELEMENTS_THICKENING = 12;
+	// Allows description of how fog is changing over the period,
+	// Fog thinning or dense fog developing
+	WEA106_FOGELEMENTS_DEVELOPING = 13;
+}
+// Selection of frost or ice weather elements
+enum Wea107_FrostElements {
+
+	WEA107_FROSTELEMENTS_FROST = 0;
+
+	WEA107_FROSTELEMENTS_LIGHT_FROST = 1;
+
+	WEA107_FROSTELEMENTS_GROUND_FROST = 2;
+
+	WEA107_FROSTELEMENTS_HEAVY_FROST = 3;
+
+	WEA107_FROSTELEMENTS_SEVERE_FROST = 4;
+
+	WEA107_FROSTELEMENTS_ICE = 5;
+}
+// Selection of elements related to sunshine and cloud.
+enum Wea108_SunshineCloudElements {
+	// Used usually at night time instead of "blue sky"
+	WEA108_SUNSHINECLOUDELEMENTS_CLEAR_SKY = 0;
+
+	WEA108_SUNSHINECLOUDELEMENTS_BLUE_SKY = 1;
+
+	WEA108_SUNSHINECLOUDELEMENTS_FAIR = 2;
+
+	WEA108_SUNSHINECLOUDELEMENTS_SUNNY = 3;
+
+	WEA108_SUNSHINECLOUDELEMENTS_SUNNY_INTERVALS = 4;
+
+	WEA108_SUNSHINECLOUDELEMENTS_A_FEW_CLOUDS = 5;
+
+	WEA108_SUNSHINECLOUDELEMENTS_PARTLY_CLOUDY = 6;
+
+	WEA108_SUNSHINECLOUDELEMENTS_CLOUDY = 7;
+
+	WEA108_SUNSHINECLOUDELEMENTS_VERY_CLOUDY = 8;
+
+	WEA108_SUNSHINECLOUDELEMENTS_OVERCAST = 9;
+
+	WEA108_SUNSHINECLOUDELEMENTS_DULL = 10;
+
+	WEA108_SUNSHINECLOUDELEMENTS_HAZY = 11;
+
+	WEA108_SUNSHINECLOUDELEMENTS_CLOUDS_DEVELOPING = 12;
+
+	WEA108_SUNSHINECLOUDELEMENTS_CLOUDS_DISSOLVING = 13;
+}
+// Elements subjectively describing the temperature.
+enum Wea109_TemperatureElements {
+
+	WEA109_TEMPERATUREELEMENTS_CHILLY = 0;
+
+	WEA109_TEMPERATUREELEMENTS_COLD = 1;
+
+	WEA109_TEMPERATUREELEMENTS_FREEZING = 2;
+
+	WEA109_TEMPERATUREELEMENTS_HOT = 3;
+
+	WEA109_TEMPERATUREELEMENTS_MILD = 4;
+
+	WEA109_TEMPERATUREELEMENTS_SCORCHING = 5;
+
+	WEA109_TEMPERATUREELEMENTS_WARM = 6;
+
+	WEA109_TEMPERATUREELEMENTS_HUMID = 7;
+
+	WEA109_TEMPERATUREELEMENTS_HEAT_WAVE = 8;
+
+	WEA109_TEMPERATUREELEMENTS_HOTTER_THAN_NORMAL = 9;
+
+	WEA109_TEMPERATUREELEMENTS_COLDER_THAN_NORMAL = 10;
+
+	WEA109_TEMPERATUREELEMENTS_EXTREMELY_COLD = 11;
+
+	WEA109_TEMPERATUREELEMENTS_EXTREMELY_HOT = 12;
+}
+// Specific hazard causing elements
+enum Wea110_HazardElements {
+
+	WEA110_HAZARDELEMENTS_BLACK_ICE = 0;
+
+	WEA110_HAZARDELEMENTS_FLOODING = 1;
+
+	WEA110_HAZARDELEMENTS_LOCALISED_FLOODING = 2;
+
+	WEA110_HAZARDELEMENTS_RISK_OF_FLASH_FLOODS = 3;
+
+	WEA110_HAZARDELEMENTS_STORM_SURGE = 4;
+
+	WEA110_HAZARDELEMENTS_LANDSLIDES = 5;
+
+	WEA110_HAZARDELEMENTS_MUDFLOWS = 6;
+
+	WEA110_HAZARDELEMENTS_SMOKE = 7;
+
+	WEA110_HAZARDELEMENTS_SMOG = 8;
+
+	WEA110_HAZARDELEMENTS_ASH_CLOUD = 9;
+
+	WEA110_HAZARDELEMENTS_DUST = 10;
+
+	WEA110_HAZARDELEMENTS_SAND = 11;
+	// Sometimes called  "dust devils"
+	WEA110_HAZARDELEMENTS_DUST_WHIRLS = 12;
+
+	WEA110_HAZARDELEMENTS_AVALANCHE_RISK = 13;
+}
+// ElementQualifiers relate to the immediately preceding element. For Example - "flooding (low lying areas)" , "windy(in exposed areas)" , "fog(early); rain (later)"
+// (Hence: Element Qualifier shall not be set as first element in weather description.)
+enum Wea200_ElementQualifier {
+	// In the overall area being referenced the element may not be present everywhere, just in some places
+	WEA200_ELEMENTQUALIFIER_IN_SOME_AREAS = 0;
+	// Items like Fog may be more likely in valleys and low ground near rivers.
+	WEA200_ELEMENTQUALIFIER_LOW_LYING_AREAS = 1;
+	// Elements like frost and snow may be likely more in high areas.
+	WEA200_ELEMENTQUALIFIER_HIGH_GROUND = 2;
+	// Urban areas sometimes have their own micro climate so sometimes warmer in urban areas or maybe smog may be an issue.
+	WEA200_ELEMENTQUALIFIER_URBAN_AREAS = 3;
+	// Outside city areas snow may be more of a problem in rural areas where drifting snow may be an issue.
+	WEA200_ELEMENTQUALIFIER_RURAL_AREAS = 4;
+	// Coastal areas are prone to higher winds and sometimes colder temperatures.
+	WEA200_ELEMENTQUALIFIER_COASTAL_AREAS = 5;
+	// In land areas may have more sheltered weather , or less windy  or warmer.
+	WEA200_ELEMENTQUALIFIER_IN_LAND = 6;
+	// Allows reference to open areas. (Moors, hills etc)
+	WEA200_ELEMENTQUALIFIER_EXPOSED_AREA = 7;
+	// Valleys  or  urban areas might be protected from harsher weather.(Warm in sheltered areas)
+	WEA200_ELEMENTQUALIFIER_SHELTERED_AREAS = 8;
+	// Allows reference to smaller areas within a larger report area
+	WEA200_ELEMENTQUALIFIER_NORTHERN_PARTS = 9;
+	// Allows reference to smaller areas within a larger report area
+	WEA200_ELEMENTQUALIFIER_NORTH_EAST_PARTS = 10;
+	// Allows reference to smaller areas within a larger report area
+	WEA200_ELEMENTQUALIFIER_EASTERN_PARTS = 11;
+	// Allows reference to smaller areas within a larger report area
+	WEA200_ELEMENTQUALIFIER_SOUTH_EAST_PARTS = 12;
+	// Allows reference to smaller areas within a larger report area
+	WEA200_ELEMENTQUALIFIER_SOUTHERN_PARTS = 13;
+	// Allows reference to smaller areas within a larger report area
+	WEA200_ELEMENTQUALIFIER_SOUTH_WEST_PARTS = 14;
+	// Allows reference to sub areas within a general report area
+	WEA200_ELEMENTQUALIFIER_WESTERN_PARTS = 15;
+	// Allows reference to smaller areas within a larger report area
+	WEA200_ELEMENTQUALIFIER_NORTH_WEST_PARTS = 16;
+	// Allows reference to smaller areas within a larger report area
+	WEA200_ELEMENTQUALIFIER_CENTRAL_PARTS = 17;
+	// Within a report some element may be likely at an earlier time of the period ( Frost early , sunny with showers later)
+	WEA200_ELEMENTQUALIFIER_EARLY = 18;
+	// Within a report some element may be likely at a later time of the period ( Frost early , sunny with showers later)
+	WEA200_ELEMENTQUALIFIER_LATER = 19;
+	// Allows variation to elements in strength
+	WEA200_ELEMENTQUALIFIER_SLIGHT = 20;
+	// Allows variation to elements in strength
+	WEA200_ELEMENTQUALIFIER_MODERATE = 21;
+	// Allows variation to elements in strength
+	WEA200_ELEMENTQUALIFIER_SEVERE = 22;
+	// Allows adjustment to how element is persisting (Snow showers -Intermittent)
+	WEA200_ELEMENTQUALIFIER_INTERMITTENT = 23;
+	// Allows adjustment to how element is persisting (rain showers -periodic)
+	WEA200_ELEMENTQUALIFIER_PERIODIC = 24;
+	// Allows adjustment to how element is persisting (Heavy Rain -Continuous)
+	WEA200_ELEMENTQUALIFIER_CONTINUOUS = 25;
+}
+// Provides a Qualifier defining the probability of the preceding element occurring. For example: cold, snow(30%), windy
+// Hence:ElementQualifierProbability shall not be set as first element in weather description.
+enum Wea201_ElementQualifierProbability {
+
+	WEA201_ELEMENTQUALIFIERPROBABILITY_0 = 0;
+
+	WEA201_ELEMENTQUALIFIERPROBABILITY_10 = 1;
+
+	WEA201_ELEMENTQUALIFIERPROBABILITY_20 = 2;
+
+	WEA201_ELEMENTQUALIFIERPROBABILITY_30 = 3;
+
+	WEA201_ELEMENTQUALIFIERPROBABILITY_40 = 4;
+
+	WEA201_ELEMENTQUALIFIERPROBABILITY_50 = 5;
+
+	WEA201_ELEMENTQUALIFIERPROBABILITY_60 = 6;
+
+	WEA201_ELEMENTQUALIFIERPROBABILITY_70 = 7;
+
+	WEA201_ELEMENTQUALIFIERPROBABILITY_80 = 8;
+
+	WEA201_ELEMENTQUALIFIERPROBABILITY_90 = 9;
+
+	WEA201_ELEMENTQUALIFIERPROBABILITY_100 = 10;
+}

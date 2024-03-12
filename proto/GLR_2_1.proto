@@ -1,0 +1,154 @@
+syntax = "proto3";
+
+package tpeg.glr;
+import "TPEG/TPEGDataTypes_2_1.proto";
+
+// Geographic Location Reference: toolkit component for simple geographic location references.
+// This component shall contain only one single type of the various provided types of geographic location references.
+message GeographicLocationReference {
+	// BoundingBox-type geographic location reference.
+	optional GeographicBoundingBox geographicBoundingBox = 1;
+	// Bounding area geographic location reference as sector of a circle or complete circle.
+	optional GeographicBoundingCircleSector geographicBoundingSector = 2;
+	// Point-type geographic location reference.
+	optional GeographicPointReference geographicPointReference = 3;
+	// Line-type geographic location reference.
+	optional GeographicLineReference geographicLineReference = 4;
+	// Area-type geographic location reference.
+	optional GeographicAreaReference geographicAreaReference = 5;
+	// Area-type geographic location reference.
+	optional GeographicAreaWithHolesReference geographicAreaWithHolesReference = 6;
+}
+// Geographic Area specified as a polygon. 
+// A GeographicAreaReference shall include at most one of the attributes "areaFeatureName" and "hierarchicalAreaFeatureName", but not both.
+message GeographicAreaReference {
+	// A sequence of points forming a closed, simple (i.e. non-self intersecting) contour of a geographic polygon. 
+	// The polygon contour is formed by line segments connecting the successive points, and finally the polygon contour is closed by the line segment connecting the last point to the first point.
+	// The resulting area polygon shall be non-self intersecting.
+	// Recommended is a counter-clockwise order of the coordinates in a (exterior) polygon.
+	//   
+	// Recommended is to limit the number of points of the polygon to 32 or less.
+	repeated Coordinate polygonPoints = 1;
+	// If set, the "isFuzzyArea" attribute indicates that the polygon shape represents a fuzzy area, i.e. is the polygon shape is an approximate description of the location of the referenced feature.
+	bool isFuzzyArea = 2;
+	// Average elevation of location in metres above/below Mean Sea Level (MSL).
+	optional int32 altitudeMSL = 3;
+	// Feature name of the area reference in the local languages of interest.
+	repeated tpeg.datatypes.LocalisedShortString areaFeatureName = 4;
+	// Attribute to express area name(s) as hierarchical feature name. Several hierarchical area names are allowed to express e.g. a region of a number of countries, or a number of states.
+	// Each such hierarchical area name structure indicates the local language of interest. Multiple hierarchical area names in a single local language may be supplied.
+	repeated HierarchicalAreaName hierarchicalAreaFeatureName = 5;
+}
+// Geographic Area with Holes specified as a exterior polygon and interior polygons representing the holes. 
+// A GeographicAreaWithHolesReference shall include at most one of the attributes "areaFeatureName" and "hierarchicalAreaFeatureName", but not both.
+message GeographicAreaWithHolesReference {
+	// Exterior polygon of the geographic area. The recommended order of the coordinates is counter-clockwise for this exterior polygon.
+	Polygon exteriorPolygon = 1;
+	// Interior polygon of the geographic area, indicating a hole in the area. The recommended order of the coordinates is clockwise for the interior polygon. Interior polygons (if more than one present) shall not intersect not touch another.
+	repeated Polygon interiorPolygons = 2;
+	// If set, the "isFuzzyArea" attribute indicates that the polygon shape represents a fuzzy area, i.e. is the polygon shape is an approximate description of the location of the referenced feature.
+	bool isFuzzyArea = 3;
+	// Average elevation of location in metres above/below Mean Sea Level (MSL).
+	optional int32 altitudeMSL = 4;
+	// Feature name of the area reference in the local languages of interest.
+	repeated tpeg.datatypes.LocalisedShortString areaFeatureName = 5;
+	// Attribute to express area name(s) as hierarchical feature name. Several hierarchical area names are allowed to express e.g. a region of a number of countries, or a number of states.
+	// Each such hierarchical area name structure indicates the local language of interest. Multiple hierarchical area names in a single local language may be supplied.
+	repeated HierarchicalAreaName hierarchicalAreaFeatureName = 6;
+}
+// Geographic Area as bounding box. A bounding box area is always an approximate geometric description including completely the actual location of an area or a collection of point locations intended to be referenced.
+message GeographicBoundingBox {
+	// Co-ordinate of the North West Corner of the bounding box enclosing the area.
+	Coordinate northWestCorner = 1;
+	// Co-ordinate of the South East Corner of the bounding box enclosing the area.
+	Coordinate southEastCorner = 2;
+	// Average elevation of location in metres above/below Mean Sea Level (MSL).
+	optional int32 altitudeMSL = 3;
+	// (optional) Feature name of the area in the local languages of interest.
+	repeated tpeg.datatypes.LocalisedShortString areaFeatureName = 4;
+}
+// Geographic bounding area as a complete circle or a sector of a circle. 
+// A bounding circle (or sector of a circle) area is always an approximate geometric description, including completely the actual location of an area location or a collection of point locations intended to be referenced.
+message GeographicBoundingCircleSector {
+	// Co-ordinate of centre point of the bounding circle enclosing the area.
+	Coordinate centerPoint = 1;
+	// Radius of the bounding circle enclosing the area.
+	uint32 radius = 2;
+	// Optional attribute to limit bounding area to only a sector of the complete circle.
+	// If this attribute is not present the bounding area shall be taken as the complete circle.
+	optional CircleSector circleSector = 3;
+	// Average elevation of location in metres above/below Mean Sea Level (MSL).
+	optional int32 altitudeMSL = 4;
+	// (optional) Feature name of the area in the local languages of interest.
+	repeated tpeg.datatypes.LocalisedShortString areaFeatureName = 5;
+}
+// Geographic line specified as a poly-line.
+message GeographicLineReference {
+	// A sequence of points forming a line.
+	// The polyline shape is formed by line segments connecting the successive points from the first point to the last point.
+	// The resulting polyline shall be non-self intersecting.
+	// Recommended is to limit the number of points of the polyline to 32 or less.
+	repeated Coordinate linePoints = 1;
+	// If set, the "isFuzzyLine" attribute indicates that the polyline shape represents a fuzzy line, i.e. the polyline is an approximate description of the location of the referenced feature.
+	bool isFuzzyLine = 2;
+	// Average elevation of location in metres above/below Mean Sea Level (MSL).
+	optional int32 altitudeMSL = 3;
+	// (optional) Feature name of the referenced line location in the local languages of interest.
+	repeated tpeg.datatypes.LocalisedShortString lineFeatureName = 4;
+}
+// Point-type geographic location reference.
+message GeographicPointReference {
+	// (centre) Co-ordinate of the point location reference
+	Coordinate point = 1;
+	// If set, the "isFuzzyPoint" attribute indicates that the supplied WGS-84 co-ordinate represents an approximate location only.
+	bool isFuzzyPoint = 2;
+	// Elevation of location in metres above/below Mean Sea Level (MSL).
+	optional int32 altitudeMSL = 3;
+	// (optional) Feature name of the referenced point location  in the local languages of interest.
+	repeated tpeg.datatypes.LocalisedShortString pointFeatureName = 4;
+	// (optional, if it exists) Name and/or road number of the road adjacent to the location in the local languages of interest.
+	repeated tpeg.datatypes.LocalisedShortString adjacentRoadDescriptor = 5;
+	// (optional) Approximate direction of travel for the closest side of the adjacent road ((if it exists) at which the point location is located. 
+	// The adjacentRoadSideTravelDirection is an azimuth angle. It is measured clockwise from Geographic North, and expressed as 360/256 degrees.
+	optional uint32 adjacentRoadSideTravelDirection = 6;
+}
+// DataStructure to specify the relevant sector of the circle.
+message CircleSector {
+	// Azimuth angle to start of circle sector of interest.
+	// The sectorStartAngle is measured clockwise from Geographic North, expressed in units of 360/256 degrees.
+	uint32 sectorStartAngle = 1;
+	// Azimuth angle to end of circle sector of interest.
+	// The sectorEndAngle is measured clockwise from Geographic North, expressed  in units of 360/256 degrees.
+	uint32 sectorEndAngle = 2;
+}
+// Data-structure for specifying geographic coordinates. Coordinates are specified by default in the WGS-84 geodetic system, unless explicitly signalled otherwise at service, or service component, level.
+message Coordinate {
+	// Longitude in standard 24 bit accuracy stores co-ordinates in order of magnitude of 10 micro degrees resolution (five decimals).
+	// Longitude-in-degrees (longitude in unit degrees) is encoded as follows:
+	// longitude = int ( sign(longitude-in-degrees)*0.5 + (longitude-in-degrees * (2^24))/360)
+	int32 Longitude = 1;
+	// Latitude in standard 24 bit accuracy stores co-ordinates in order of magnitude of 10 micro degrees resolution (five decimals).
+	// Latitude-in-degrees (latitude in unit degrees) is encoded as follows:
+	// latitude = int ( sign(latitude-in-degrees)*0.5 + (latitude-in-degrees * (2^24))/ 360)
+	int32 Latitude = 2;
+}
+// Data structure to specify an area as a collection of smaller areas as part of a larger area. Typical usage would be to specify a Province or State as the larger administrative area, and the counties as the smaller administrative areas.
+// The supplied languageCode indicates the relevant local language for both the areaName as the detailedAreaNames supplied.
+// In certain applications, e.g. weather alerts, affected areas may be specified as such hierarchical areas.
+message HierarchicalAreaName {
+	// Specifies the local language used for the names making up the hierarchical area name.
+	tpeg.datatypes.Typ001_LanguageCode languageCode = 1;
+	// Overall feature name of the area reference
+	string areaName = 2;
+	// One or more detail area name(s) of the area reference
+	repeated string detailAreaName = 3;
+}
+// A sequence of points forming a closed, simple (i.e. non-self intersecting) exterior or interior contour of a geographic polygon. 
+// The polygon contour is formed by line segments connecting the successive points, and finally the polygon contour is closed by the line segment connecting the last point to the first point.
+// The resulting area polygon shall be non-self intersecting.
+message Polygon {
+	// A sequence of points forming a closed, simple (i.e. non-self intersecting) contour of a geographic polygon. 
+	// The polygon contour is formed by line segments connecting the successive points, and finally the polygon contour is closed by the line segment connecting the last point to the first point.
+	// The resulting area polygon shall be non-self intersecting.
+	repeated Coordinate polygonPoints = 1;
+}

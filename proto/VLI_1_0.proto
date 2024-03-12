@@ -1,0 +1,238 @@
+syntax = "proto3";
+
+package tpeg.vli;
+import "TPEG/LRC_3_0.proto";
+import "TPEG/MMC_1_1.proto";
+
+import "TPEG/TPEGDataTypes_2_1.proto";
+// The VigilianceMessage is the data component of TPEG2-VLI.
+message VigilanceMessage {
+	// The message management information.
+	MMCSwitch mmt = 100;
+	// The vigilance information.
+	optional VigilanceInformation vigilanceInformation = 101;
+	// The location reference.
+	optional tpeg.lrc.LocationReferencingContainer loc = 102;
+}
+// Abstract container included for formal reasons, to allow future extension of the MMC.
+message MMCSwitch {
+	oneof MMCSwitch_opt {
+		tpeg.mmc.MessageManagementContainer messageManagementContainer = 1;
+	}
+}
+// The VigilanceInformation component describes a vigilance information.
+message VigilanceInformation {
+	// The date and time when the vigilance information expires and is no longer valid.
+	fixed32 stopTime = 1;
+	// The type of the vigilance information.
+	Vli001_VigilanceType type = 2;
+	// A confidence value for this message.
+	optional Vli002_ConfidenceLevel confidence = 3;
+	// The subdivision country code to further specify the region for which this method is valid for.
+	optional SubdivisionCountryCode countryCode = 4;
+	// The source of the information.
+	repeated tpeg.datatypes.LocalisedShortString source = 5;
+	// This field may be used to provide additional information (e.g. human readable position description)
+	repeated tpeg.datatypes.LocalisedShortString freeText = 6;
+	// If the vigilance information contains speed limit information this is provided in the SpeedLimit component.
+	repeated SpeedLimit speedLimit = 100;
+}
+// The component SpeedLimit contains fields to describe a speed limit and add restrictions to it. The timeInterval, laneNumber, vehicleType and weatherCondition, if set, restrict the validity of the speed limit.
+message SpeedLimit {
+	// The speed limit changes within short time periods (e.g. managed via a traffic control center). The provided speed limit might not match with the current real speed limit.
+	bool variableSpeedLimit = 1;
+	// Needs to be set to true in case the speed limit unit is miles per hour (mph). The default (false) is kilometer per hour (kph).
+	bool speedLimitInMilesPerHours = 2;
+	// A speed limit applicable for the vigilance type.
+	optional uint32 speedLimit = 3;
+	// The time interval may be used to restrict the period the speed limit is active.
+	optional tpeg.datatypes.TimeToolkit timeInterval = 4;
+	// The lane number for which this speed limit is valid.
+	optional LaneNumber laneNumber = 5;
+	// The vehicle type for which this speed limit is valid.
+	optional Vli003_VehicleType vehicleType = 6;
+	// The weather conditions for which this speed limit is valid.
+	optional Vli004_WeatherCondition weatherCondition = 7;
+}
+// Lanes are numbered from the curb to the middle of the road. Right hand traffic lanes are therefore numbered from the right to the left relating to the driving direction. Left hand traffic lanes are numbered from left to right relating to the driving direction. The first lane has the number 0.
+// The lane numbering should follow these rules:
+//  Hard shoulder is always number 0
+//   Leftmost lane in case of left hand driving (if exists)
+//   Rightmost lane in case of right hand driving (if exists)
+//   Additional hard shoulders are numbered consecutively (also applicable for hard shoulders next to the divider)
+//  First drivable lane for vehicles is number 1 
+//  All lanes which are physically available count
+//  Lanes which are temporarily closed also count
+//  Numbering is consecutive
+//  &nbsp;
+// If physical layout changes then a split of the location is recommended.
+message LaneNumber {
+	// true, if the hard shoulder exists and is selected
+	bool hardShoulder = 1;
+	// true, if the lane is selected
+	bool lane1 = 2;
+	// true, if the lane is selected
+	bool lane2 = 3;
+	// true, if the lane is selected
+	bool lane3 = 4;
+	// true, if the lane is selected
+	bool lane4 = 5;
+	// true, if the lane is selected
+	bool lane5 = 6;
+	// true, if the lane is selected
+	bool lane6 = 7;
+	// true, if the lane is selected
+	bool lane7 = 8;
+	// true, if the lane is selected
+	bool lane8 = 9;
+	// true, if the lane is selected
+	bool lane9 = 10;
+	// true, if the lane is selected
+	bool lane10 = 11;
+	// true, if the lane is selected
+	bool lane11 = 12;
+	// true, if the lane is selected
+	bool lane12 = 13;
+	// true, if the lane is selected
+	bool lane13 = 14;
+	// true, if the lane is selected
+	bool lane14 = 15;
+	// true, if the lane is selected
+	bool lane15 = 16;
+	// true, if the lane is selected
+	bool lane16 = 17;
+	// true, if the lane is selected
+	bool lane17 = 18;
+	// true, if the lane is selected
+	bool lane18 = 19;
+	// true, if the lane and potential further lanes are selected
+	bool lane19andMore = 20;
+	// true, if an inner side hard shoulder exists and is selected
+	bool innerSideHardShoulder = 21;
+}
+// The  SubdivisionCountryCode contains fields to represent the country and one subdivision.
+// Example:  countryCode US, subdivisionCode MA describes Massachusetts, USA.
+message SubdivisionCountryCode {
+	// 2 letter country code; see ISO 3166-1:2006
+	tpeg.datatypes.Typ005_CountryCode countryCode = 1;
+	// 2 letter subdivision code; see ISO 3166-1:2006
+	optional string subdivisionCode = 2;
+}
+
+enum Vli001_VigilanceType {
+
+	VLI001_VIGILANCETYPE_UNKNOWN = 0;
+	// Camera on a permanent location that activates when the legal speed limit is exceeded.
+	VLI001_VIGILANCETYPE_FIXED_SPEED_CAMERA = 1;
+	// Camera on a permanent location that activates when a red traffic light is passed or the legal speed limit is exceeded.
+	VLI001_VIGILANCETYPE_RED_LIGHT_SPEED_CAMERA = 2;
+	// Camera on a permanent location that activates when a red traffic light is passed.
+	VLI001_VIGILANCETYPE_RED_LIGHT_CAMERA = 3;
+	// Camera on a temporary location that activates the legal speed limit is exceeded.
+	VLI001_VIGILANCETYPE_MOBILE_SPEED_CAMERA = 4;
+	// Road stretch in which the average speed of a vehicle is measured.  A camera activates when the average speed exceeds the legal speed.
+	VLI001_VIGILANCETYPE_AVERAGE_SPEED_CAMERA = 5;
+	// Location with an increased probability of a mobile speed camera being present.
+	VLI001_VIGILANCETYPE_MOBILE_CAMERA_HOT_SPOT = 6;
+	// Road stretch with multiple fixed speed cameras where at least one camera is active.
+	VLI001_VIGILANCETYPE_SPEED_ENFORCEMENT_ZONE = 7;
+	// Camera on a permanent location that activates when a restricted area is accessed without permission.
+	VLI001_VIGILANCETYPE_RESTRICTED_AREAS_CAMERA = 8;
+	// Location with an increased probability of accidents.
+	VLI001_VIGILANCETYPE_ACCIDENT_BLACK_SPOT = 9;
+	// Location of a gated or ungated railway crossing.
+	VLI001_VIGILANCETYPE_RAILWAY_CROSSING = 10;
+	// Camera that automatically scans for the number plate.
+	VLI001_VIGILANCETYPE_AUTOMATIC_NUMBERPLATE_RECOGNITION_CAMERA = 11;
+	// Camera on a permanent location that activates when detecting non authorized vehicles on a bus lane.
+	VLI001_VIGILANCETYPE_BUS_LANE_CAMERA = 12;
+	// Camera on a permanent location that activates when detecting a vehicle illegally entering a congestion charge area.
+	VLI001_VIGILANCETYPE_CONGESTION_CHARGE_CAMERA = 13;
+	// Camera on a permanent location that activates when detecting a vehicle illegally using the HOV lane.
+	VLI001_VIGILANCETYPE_HIGH_OCCUPANCY_VEHICLE_LANE_CAMERA = 14;
+	// Camera on a permanent location that activates when detecting a vehicle whose distance is less than the required distance between vehicles.
+	VLI001_VIGILANCETYPE_INTER_VEHICLE_DISTANCE_CAMERA = 15;
+	// Camera on a permanent location that activates when detecting a vehicle illegally turning left.
+	VLI001_VIGILANCETYPE_LEFT_TURN_CAMERA = 16;
+	// Camera on a permanent location that activates when detecting a vehicle illegally turning right.
+	VLI001_VIGILANCETYPE_RIGHT_TURN_CAMERA = 17;
+	// Camera on a permanent location that activates when detecting a vehicle illegally performing a U-turn.
+	VLI001_VIGILANCETYPE_U_TURN_CAMERA = 18;
+	// Camera on a permanent location that activates when a red traffic light is passed or detecting a vehicle illegally performing a U-turn.
+	VLI001_VIGILANCETYPE_RED_LIGHT_AND_U_TURN_CAMERA = 19;
+	// Camera on a permanent location that monitors places where you are not allowed to park.
+	VLI001_VIGILANCETYPE_PARKING_CAMERA = 20;
+	// Camera on a permanent location that activates when detecting a vehicle passing a stop sign without stopping.
+	VLI001_VIGILANCETYPE_STOP_SIGN_CAMERA = 21;
+	// Camera on a permanent location that activates when detecting a vehicle illegally using a toll road.
+	VLI001_VIGILANCETYPE_TOLL_BOOTH_CAMERA = 22;
+	// Camera on a permanent location that activates when the legal weight limit is exceeded.
+	VLI001_VIGILANCETYPE_WEIGHT_LIMIT_CAMERA = 23;
+	// A speed bump is a traffic calming feature of road design used to slow traffic, or reduce through traffic, via vertical deflection.
+	VLI001_VIGILANCETYPE_SPEED_BUMP = 24;
+	// Road stretch which is temporarily active, with dangerous areas and potentially including mobile speed camera locations.
+	VLI001_VIGILANCETYPE_RISK_ZONE = 25;
+	// Road stretch with dangerous areas, potentially including permanent camera locations.
+	VLI001_VIGILANCETYPE_DANGER_ZONE = 26;
+	// Road stretch with a school close-by.
+	VLI001_VIGILANCETYPE_SCHOOL_ZONE = 27;
+	// Camera on a permanent location that activates when detecting noise pollution.
+	VLI001_VIGILANCETYPE_NOISE_POLLUTION_CAMERA = 28;
+	// Code to be used for test purposes.
+	VLI001_VIGILANCETYPE_TEST_CODE = 100;
+	// Code to indicate that the free text field should be used.
+	VLI001_VIGILANCETYPE_USE_FREE_TEXT = 101;
+	// A general vigilance zone.
+	VLI001_VIGILANCETYPE_VIGILANCE_ZONE = 255;
+}
+// The confidence level is an indication of the confidence in the correctness and accuracy of the attributes. The exact definition of the levels strongly depends on the offer of the vendor as well as the needs of the customer and hence is a matter of negotiation.
+enum Vli002_ConfidenceLevel {
+	// Low confidence level
+	// e.g.
+	// The amount of input date allows only guessing if the alert is substantial.
+	VLI002_CONFIDENCELEVEL_LOW = 0;
+	// Medium confidence level
+	// e.g.
+	// The amount of input data available allows estimation of the attributes.
+	VLI002_CONFIDENCELEVEL_MEDIUM = 1;
+	// High confidence level
+	// e.g.
+	// The amount of input data available allows significant estimation of the attributes.
+	VLI002_CONFIDENCELEVEL_HIGH = 2;
+	// Best confidence level
+	// e.g.
+	// The amount of input data available allows significant estimation of the attributes. The alert was reviewed by a human.
+	VLI002_CONFIDENCELEVEL_BEST = 3;
+}
+// VehicleType is used to further specify for which kind of vehicle the speed limit is valid.
+enum Vli003_VehicleType {
+
+	VLI003_VEHICLETYPE_BUS = 0;
+
+	VLI003_VEHICLETYPE_CAR = 1;
+
+	VLI003_VEHICLETYPE_CARAVAN = 2;
+
+	VLI003_VEHICLETYPE_HIGH_SIDED_VEHICLE = 3;
+
+	VLI003_VEHICLETYPE_TRUCK = 4;
+
+	VLI003_VEHICLETYPE_MOTORCYCLE = 5;
+
+	VLI003_VEHICLETYPE_OTHER = 6;
+}
+// WeatherCondition is used to further specify for which weather condition a speed limit is valid.
+enum Vli004_WeatherCondition {
+
+	VLI004_WEATHERCONDITION_FOG = 0;
+
+	VLI004_WEATHERCONDITION_HIGH_WINDS = 1;
+
+	VLI004_WEATHERCONDITION_ICE = 2;
+
+	VLI004_WEATHERCONDITION_RAIN = 3;
+
+	VLI004_WEATHERCONDITION_SNOW = 4;
+
+	VLI004_WEATHERCONDITION_OTHER = 5;
+}
