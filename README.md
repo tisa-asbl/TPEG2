@@ -1,6 +1,7 @@
 # TPEG2
 This repository contains TPEG2 Protobuf files.
 
+## About TPEG2
 ![image](https://github.com/tisa-asbl/TPEG2/assets/17566892/e3c3e1a7-c18c-43c7-a3af-ae485a780b4e)
 
 TPEG specifications offer a method for transmitting multimodal traffic and travel information, regardless of client type, location or required delivery channel (e.g. DAB, HD radio, Internet, DVB-x, DMB, GPRS, Wi-Fi …). Language independence has also been a prime principle in the design.
