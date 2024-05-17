@@ -14,7 +14,7 @@ TPEG specifications offer a method for transmitting multimodal traffic and trave
 In contrast to TMC (event-based road traffic information), TPEG refers to a whole set or toolkit of specifications, for offering a wider range of services to a wider range of users and devices.
 TPEG services are defined in a modular way and can therefore vary in a number of ‘directions’:
 
-* Application – e.g. Road Traffic Messages, Public Transport Information or Parking Information. Each Application is uniquely identified by an Application ID ([AID](http://tisa.org/technologies/tpeg/tpeg-aid-table/)) that are allocated by the TPEG Application Working Group (([TAWG](http://tisa.org/activities/the-tpeg-applications-wg/))) of TISA.
+* Application – e.g. Road Traffic Messages, Public Transport Information or Parking Information. Each Application is uniquely identified by an Application ID ([AID](http://tisa.org/technologies/tpeg/tpeg-aid-table/)) that are allocated by the TPEG Application Working Group ([TAWG](http://tisa.org/activities/the-tpeg-applications-wg/)) of TISA.
 * Transmission method – e.g. DAB digital radio, DMB, internet
 * Location referencing method – e.g. table-based (using for example TMC location tables) or on-the-fly (using a method that gives a location reference that works with or without maps and does not require a look-up table to decode in the receiver)
 * Device – e.g. intended for vehicle navigation systems, internet browsers or mobile devices
